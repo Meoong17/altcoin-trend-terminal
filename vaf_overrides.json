@@ -1,0 +1,152 @@
+{
+  "AAVEUSDT": {
+    "pq": { "moat": 10, "product_market_fit": 8, "execution_risk": 5 },
+    "nf": { "token_demand_link": 8, "supply_cleanliness": 4 },
+    "rg": { "value_capture_expansion": 9, "catalyst_strength": 5, "repricing_friction": 4 },
+    "otf": { "catalyst_timing": 6, "supply_timing": 6 },
+    "vfr": { "dilution_30d_usd": 4200000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "B",
+    "notes": "veLEND fee share live; GHO growth thesis"
+  },
+  "UNIUSDT": {
+    "pq": { "moat": 10, "product_market_fit": 9, "execution_risk": 4 },
+    "nf": { "token_demand_link": 6, "supply_cleanliness": 5 },
+    "rg": { "value_capture_expansion": 8, "catalyst_strength": 7, "repricing_friction": 4 },
+    "otf": { "catalyst_timing": 7, "supply_timing": 5 },
+    "vfr": { "dilution_30d_usd": 8500000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": true, "chart_breakdown": false },
+    "confidence": "B",
+    "notes": "UniswapX + v4 hooks; fee switch proposal active — high upside catalyst"
+  },
+  "PENDLEUSDT": {
+    "pq": { "moat": 7, "product_market_fit": 9, "execution_risk": 5 },
+    "nf": { "token_demand_link": 8, "supply_cleanliness": 6 },
+    "rg": { "value_capture_expansion": 9, "catalyst_strength": 7, "repricing_friction": 5 },
+    "otf": { "catalyst_timing": 7, "supply_timing": 6 },
+    "vfr": { "dilution_30d_usd": 2100000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "B",
+    "notes": "Yield trading niche leader; PT/YT flywheel strong; vePENDLE growing"
+  },
+  "MORPHOUSDT": {
+    "pq": { "moat": 6, "product_market_fit": 8, "execution_risk": 6 },
+    "nf": { "token_demand_link": 7, "supply_cleanliness": 6 },
+    "rg": { "value_capture_expansion": 8, "catalyst_strength": 6, "repricing_friction": 5 },
+    "otf": { "catalyst_timing": 6, "supply_timing": 6 },
+    "vfr": { "dilution_30d_usd": 1800000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "B",
+    "notes": "MetaMorpho vaults gaining TVL; efficient lending layer"
+  },
+  "LDOUSDT": {
+    "pq": { "moat": 9, "product_market_fit": 9, "execution_risk": 4 },
+    "nf": { "token_demand_link": 5, "supply_cleanliness": 5 },
+    "rg": { "value_capture_expansion": 6, "catalyst_strength": 5, "repricing_friction": 5 },
+    "otf": { "catalyst_timing": 5, "supply_timing": 5 },
+    "vfr": { "dilution_30d_usd": 9500000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "B",
+    "notes": "Liquid staking leader; LDO governance token demand link is weak vs stETH fee stream"
+  },
+  "CRVUSDT": {
+    "pq": { "moat": 9, "product_market_fit": 8, "execution_risk": 6 },
+    "nf": { "token_demand_link": 6, "supply_cleanliness": 4 },
+    "rg": { "value_capture_expansion": 5, "catalyst_strength": 5, "repricing_friction": 5 },
+    "otf": { "catalyst_timing": 5, "supply_timing": 5 },
+    "vfr": { "dilution_30d_usd": 12000000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "C",
+    "notes": "Deep liquidity moat; crvUSD stablecoin growth; high dilution vs fee share"
+  },
+  "COMPUSDT": {
+    "pq": { "moat": 6, "product_market_fit": 6, "execution_risk": 5 },
+    "nf": { "token_demand_link": 5, "supply_cleanliness": 5 },
+    "rg": { "value_capture_expansion": 4, "catalyst_strength": 4, "repricing_friction": 5 },
+    "otf": { "catalyst_timing": 4, "supply_timing": 5 },
+    "vfr": { "dilution_30d_usd": 5300000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "C",
+    "notes": "Losing TVL share to AAVE/Morpho; brand still matters but growth flat"
+  },
+  "GMXUSDT": {
+    "pq": { "moat": 7, "product_market_fit": 8, "execution_risk": 5 },
+    "nf": { "token_demand_link": 7, "supply_cleanliness": 6 },
+    "rg": { "value_capture_expansion": 7, "catalyst_strength": 5, "repricing_friction": 5 },
+    "otf": { "catalyst_timing": 5, "supply_timing": 6 },
+    "vfr": { "dilution_30d_usd": 2200000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "B",
+    "notes": "Perp DEX leader on Arbitrum; GMX token captures real fee revenue; TVL steady"
+  },
+  "DYDXUSDT": {
+    "pq": { "moat": 6, "product_market_fit": 7, "execution_risk": 7 },
+    "nf": { "token_demand_link": 4, "supply_cleanliness": 5 },
+    "rg": { "value_capture_expansion": 6, "catalyst_strength": 6, "repricing_friction": 6 },
+    "otf": { "catalyst_timing": 6, "supply_timing": 5 },
+    "vfr": { "dilution_30d_usd": 7800000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": true, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "C",
+    "notes": "dYdX chain migration complete; unlock schedule heavy; staking yield live"
+  },
+  "JUPUSDT": {
+    "pq": { "moat": 8, "product_market_fit": 9, "execution_risk": 4 },
+    "nf": { "token_demand_link": 6, "supply_cleanliness": 5 },
+    "rg": { "value_capture_expansion": 8, "catalyst_strength": 7, "repricing_friction": 4 },
+    "otf": { "catalyst_timing": 7, "supply_timing": 6 },
+    "vfr": { "dilution_30d_usd": 5400000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "B",
+    "notes": "Solana DEX aggregator dominant; JupLabs recurring airdrops; JUP buyback live"
+  },
+  "RAYUSDT": {
+    "pq": { "moat": 7, "product_market_fit": 8, "execution_risk": 4 },
+    "nf": { "token_demand_link": 6, "supply_cleanliness": 6 },
+    "rg": { "value_capture_expansion": 7, "catalyst_strength": 5, "repricing_friction": 4 },
+    "otf": { "catalyst_timing": 5, "supply_timing": 6 },
+    "vfr": { "dilution_30d_usd": 3100000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "B",
+    "notes": "Solana DEX OG; Raydium CLMM + permissionless pools; steady fee generation"
+  },
+  "CAKEUSDT": {
+    "pq": { "moat": 7, "product_market_fit": 7, "execution_risk": 5 },
+    "nf": { "token_demand_link": 5, "supply_cleanliness": 4 },
+    "rg": { "value_capture_expansion": 5, "catalyst_strength": 4, "repricing_friction": 5 },
+    "otf": { "catalyst_timing": 4, "supply_timing": 5 },
+    "vfr": { "dilution_30d_usd": 9500000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "C",
+    "notes": "BNB Chain DEX leader; supply inflation still high but declining; veCAKE boosts demand"
+  },
+  "SNXUSDT": {
+    "pq": { "moat": 6, "product_market_fit": 6, "execution_risk": 7 },
+    "nf": { "token_demand_link": 4, "supply_cleanliness": 4 },
+    "rg": { "value_capture_expansion": 5, "catalyst_strength": 5, "repricing_friction": 6 },
+    "otf": { "catalyst_timing": 5, "supply_timing": 5 },
+    "vfr": { "dilution_30d_usd": 6600000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "C",
+    "notes": "Synthetix v3 migration; SNX token captures staking fees but complex tokenomics"
+  },
+  "ENAUSDT": {
+    "pq": { "moat": 6, "product_market_fit": 8, "execution_risk": 6 },
+    "nf": { "token_demand_link": 7, "supply_cleanliness": 5 },
+    "rg": { "value_capture_expansion": 9, "catalyst_strength": 8, "repricing_friction": 5 },
+    "otf": { "catalyst_timing": 7, "supply_timing": 6 },
+    "vfr": { "dilution_30d_usd": 4200000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "B",
+    "notes": "Ethena sUSDe; fast-growing synthetic dollar; yield from funding + basis; Pendle integration"
+  },
+  "MKRUSDT": {
+    "pq": { "moat": 9, "product_market_fit": 8, "execution_risk": 4 },
+    "nf": { "token_demand_link": 7, "supply_cleanliness": 6 },
+    "rg": { "value_capture_expansion": 7, "catalyst_strength": 6, "repricing_friction": 4 },
+    "otf": { "catalyst_timing": 6, "supply_timing": 6 },
+    "vfr": { "dilution_30d_usd": 1200000, "quality": "Proxy" },
+    "flags": { "unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false },
+    "confidence": "B",
+    "notes": "Sky rebrand; DAI savings rate + Spark protocol growth; MKR buyback from surplus"
+  }
+}
