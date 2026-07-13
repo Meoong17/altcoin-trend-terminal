@@ -4,116 +4,227 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Altcoin Trend Terminal</title>
+<meta name="description" content="Macro-aware altcoin trend, volume and value-accrual intelligence.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0B0E14; --panel:#11151E; --panel2:#0E1219; --line:#1E2530;
-  --text:#D9DEE8; --muted:#6B7688; --dim:#3A4252;
-  --up:#3FDE8F; --down:#F06A5A; --warn:#E8B44F; --liq:#4FC3E8;
+  --bg:#0A0D13; --panel:#121722; --panel2:#0D1119; --ink:#0A0D13;
+  --line:#202836; --line2:#2A3444;
+  --text:#E2E7F0; --muted:#758092; --dim:#414B5E;
+  --up:#34D98B; --down:#F26B5C; --warn:#E8B44F; --liq:#53C8EC; --vaf:#9D7BEA;
+  --btc:#F7931A;
   --mono:'JetBrains Mono','DejaVu Sans Mono',monospace;
   --disp:'Space Grotesk','Liberation Sans',sans-serif;
+  --r:10px; --r-sm:6px;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 8px 24px -12px rgba(0,0,0,.6);
+  --shadow-hover:0 2px 4px rgba(0,0,0,.5),0 16px 40px -16px rgba(0,0,0,.7),0 0 0 1px var(--line2);
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.5;min-height:100vh}
-.wrap{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
+html{scrollbar-color:var(--dim) var(--bg)}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.55;
+  min-height:100vh;font-variant-numeric:tabular-nums;
+  background-image:radial-gradient(1200px 500px at 50% -220px,rgba(83,200,236,.07),transparent 65%)}
+.wrap{max-width:1160px;margin:0 auto;padding:0 18px 56px}
+::selection{background:rgba(83,200,236,.25)}
 
-header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
-h1{font-family:var(--disp);font-weight:700;font-size:18px;letter-spacing:.04em}
-h1 span{color:var(--liq)}
-#meta{color:var(--muted);font-size:11px}
-#stale{display:none;color:var(--warn);font-size:11px}
+/* ── sticky glass header ── */
+header{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  background:rgba(10,13,19,.78);border-bottom:1px solid var(--line)}
+.hd{max-width:1160px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:14px}
+.brand{display:flex;align-items:center;gap:11px;white-space:nowrap}
+.mark{width:30px;height:30px;flex:none;border-radius:8px;position:relative;
+  background:linear-gradient(135deg,#1A2230,#0D1119);border:1px solid var(--line2);
+  box-shadow:inset 0 1px 0 rgba(226,231,240,.07),0 2px 8px rgba(0,0,0,.5)}
+.mark::before{content:"";position:absolute;inset:8px;transform:rotate(45deg);border-radius:2px;
+  background:linear-gradient(135deg,#E8EDF5 0%,#9fb6c4 40%,var(--liq) 100%);opacity:.92}
+h1{font-family:'Marcellus',var(--disp);font-weight:400;font-size:17px;letter-spacing:.22em;line-height:1.05;
+  background:linear-gradient(100deg,#F2F5FA 0%,#C9D4E2 45%,#7fc9e2 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.42em;color:var(--muted);
+  -webkit-text-fill-color:var(--muted);margin-bottom:2px}
+#hd-season{font-size:10.5px;color:var(--muted);letter-spacing:.06em;display:none}
+#hd-season b{font-weight:500}
+.hd-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+#meta{color:var(--muted);font-size:10.5px;letter-spacing:.03em}
+#stale{display:none;color:var(--warn);font-size:10.5px}
+#howto-btn{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--liq);
+  background:transparent;border:1px solid var(--line2);border-radius:999px;padding:6px 14px;cursor:pointer;
+  transition:border-color .18s,background .18s}
+#howto-btn:hover{border-color:var(--liq);background:rgba(83,200,236,.08)}
+#howto-btn:focus-visible{outline:2px solid var(--liq);outline-offset:2px}
 
-/* macro strip */
-#macro{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
-.mbox{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px}
-.mbox .lbl{color:var(--muted);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
-.mbox .vrow2{display:flex;align-items:baseline;gap:10px}
-.mbox .val{font-size:26px;font-weight:700;margin:2px 0 2px}
-.mbox .tag{font-size:10px;letter-spacing:.08em;color:var(--muted)}
-.band{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--down),var(--warn) 45%,var(--up));position:relative;margin:8px 0 10px}
-.band i{position:absolute;top:-3px;width:2px;height:10px;background:var(--text);box-shadow:0 0 0 1px var(--bg)}
+/* ── macro strip ── */
+#macro{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:20px 0 12px}
+.mbox{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}
+.lbl{color:var(--muted);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase}
+.vrow2{display:flex;align-items:baseline;gap:10px;margin:3px 0 2px}
+.val{font-family:var(--disp);font-size:27px;font-weight:700;letter-spacing:.01em}
+.tag{font-size:10px;letter-spacing:.08em;color:var(--muted)}
+.band{height:5px;border-radius:3px;background:linear-gradient(90deg,var(--down),var(--warn) 45%,var(--up));
+  position:relative;margin:9px 0 10px}
+.band i{position:absolute;top:-3.5px;width:2.5px;height:12px;border-radius:2px;background:var(--text);
+  box-shadow:0 0 0 2px var(--bg);transition:left .8s cubic-bezier(.22,1,.36,1)}
 .band.inv{background:linear-gradient(90deg,var(--up),var(--warn) 55%,var(--down))}
-.chips{display:flex;flex-wrap:wrap;gap:4px}
-.chip{font-size:9.5px;letter-spacing:.05em;padding:2px 7px;border-radius:3px;border:1px solid var(--line);background:var(--panel2);color:var(--muted)}
+.band.season{background:linear-gradient(90deg,var(--btc),#8a7350 40%,#3f7f8f 60%,var(--liq))}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-size:9px;letter-spacing:.03em;padding:2px 6.5px;border-radius:4px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--muted);transition:border-color .15s}
 .chip b{font-weight:500}
 .chip.p b{color:var(--up)} .chip.n b{color:var(--down)}
-#degraded{display:none;grid-column:1/-1;border:1px solid var(--warn);border-radius:6px;padding:8px 12px;color:var(--warn);font-size:11px;background:rgba(232,180,79,.06)}
+#regime{grid-column:1/-1;display:none;align-items:baseline;gap:12px;padding:11px 16px}
+#regime-state{font-family:var(--disp);font-weight:700;font-size:14.5px;letter-spacing:.05em}
+#degraded{display:none;grid-column:1/-1;border:1px solid var(--warn);border-radius:var(--r);
+  padding:9px 14px;color:var(--warn);font-size:11px;background:rgba(232,180,79,.06)}
 
-/* controls */
-#ctrl{display:flex;align-items:center;gap:10px;margin:0 0 12px}
-#ctrl .cl{color:var(--muted);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+/* ── controls ── */
+#ctrl{display:flex;align-items:center;gap:10px;margin:6px 0 16px;flex-wrap:wrap}
+.cl{color:var(--muted);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase}
 #count{margin-right:auto}
-#filter,#sort,#grp{background:var(--panel);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:12px;border-radius:4px;padding:5px 9px;outline:none}
+#universe{color:var(--liq)}
+#filter,#sort,#grp{background:var(--panel);border:1px solid var(--line);color:var(--text);
+  font-family:var(--mono);font-size:12px;border-radius:var(--r-sm);padding:6px 10px;outline:none;
+  transition:border-color .15s}
 #filter{width:150px}
 #filter:focus,#sort:focus,#grp:focus{border-color:var(--liq)}
 
-/* coin grid */
-#coins{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px}
-.card .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
-.card .sym{font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.03em}
-.card .px{text-align:right}
-.card .px b{font-size:14px;font-weight:500}
-.card .px span{display:block;font-size:10.5px}
-.scorerow{display:flex;align-items:center;gap:12px;margin:4px 0 2px}
-.scorerow b{font-size:32px;font-weight:700;line-height:1}
-.scorerow .sl{color:var(--muted);font-size:10px;letter-spacing:.1em;text-transform:uppercase;line-height:1.3}
+/* ── coin grid & cards ── */
+#coins{display:grid;grid-template-columns:repeat(auto-fill,minmax(295px,1fr));gap:10px}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:var(--r);padding:12px 13px;box-shadow:var(--shadow);
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover)}
+.head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.sym{font-family:var(--disp);font-weight:700;font-size:14px;letter-spacing:.03em}
+.sym small{color:var(--dim);font-weight:500;font-size:10px}
+.px{text-align:right}
+.px b{font-size:13px;font-weight:500}
+.px span{display:block;font-size:10px}
+.scorerow{display:flex;align-items:center;gap:10px;margin:2px 0 1px}
+.scorerow b{font-family:var(--disp);font-size:27px;font-weight:700;line-height:1}
+.sl{color:var(--muted);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;line-height:1.35}
 .spark{margin-left:auto}
-.sbar{height:5px;border-radius:3px;background:var(--panel2);border:1px solid var(--line);margin:8px 0 12px;overflow:hidden}
-.sbar i{display:block;height:100%;border-radius:3px}
-.rows{display:grid;grid-template-columns:repeat(3,1fr);gap:7px 12px;font-size:12px}
-.rows .k{color:var(--muted);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;display:block}
+.sbar{height:4px;border-radius:3px;background:var(--panel2);border:1px solid var(--line);margin:7px 0 9px;overflow:hidden}
+.sbar i{display:block;height:100%;border-radius:3px;transition:width .7s cubic-bezier(.22,1,.36,1)}
+.rows{display:grid;grid-template-columns:repeat(3,1fr);gap:5px 10px;font-size:11.5px}
+.rows .k{color:var(--muted);font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;display:block}
 .pos{color:var(--up)} .neg{color:var(--down)} .neu{color:var(--text)} .wn{color:var(--warn)}
+.vafchips .chip:first-child{border-color:rgba(157,123,234,.5)}
+.vafchips .chip:first-child b{color:var(--vaf)}
 
-/* volume block */
-.vol{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
-.vol .vh{display:flex;justify-content:space-between;align-items:baseline}
-.vol .k{color:var(--muted);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase}
-.vol .amt{font-weight:500}
-.vbars{display:flex;align-items:flex-end;gap:2px;height:34px;margin:6px 0 4px}
-.vbars i{flex:1;background:var(--dim);border-radius:1px;min-height:2px}
-.vbars i:last-child{background:var(--liq)}
+/* volume */
+.vol{margin-top:10px;padding-top:8px;border-top:1px dashed var(--line)}
+.vh{display:flex;justify-content:space-between;align-items:baseline}
+.vol .k{color:var(--muted);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+.amt{font-weight:500}
+.vbars{display:flex;align-items:flex-end;gap:2px;height:24px;margin:5px 0 4px}
+.vbars i{flex:1;background:var(--dim);border-radius:1.5px;min-height:2px;opacity:.85}
+.vbars i:last-child{background:var(--liq);opacity:1}
 .vrow{display:flex;align-items:center;gap:10px}
-.vtape{flex:1;height:13px;background:var(--panel2);border:1px solid var(--line);border-radius:3px;position:relative;overflow:hidden}
-.vtape i{position:absolute;left:0;top:0;bottom:0;background:rgba(79,195,232,.35);border-right:2px solid var(--liq)}
+.vtape{flex:1;height:11px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;position:relative;overflow:hidden}
+.vtape i{position:absolute;left:0;top:0;bottom:0;background:rgba(83,200,236,.3);border-right:2px solid var(--liq);
+  transition:width .7s cubic-bezier(.22,1,.36,1)}
 .vtape s{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--dim);left:50%}
-.vratio{min-width:52px;text-align:right;font-size:11.5px}
-.vmeta{color:var(--muted);font-size:10px;margin-top:4px;display:flex;justify-content:space-between}
-
+.vratio{min-width:48px;text-align:right;font-size:11px}
+.vmeta{color:var(--muted);font-size:9.5px;margin-top:4px;display:flex;justify-content:space-between}
 .unavail{color:var(--muted);font-size:12px;padding:6px 0}
-#empty{color:var(--muted);padding:40px 0;text-align:center}
-footer{margin-top:22px;padding-top:12px;border-top:1px solid var(--line);color:var(--dim);font-size:10px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
-@media(max-width:600px){#macro{grid-template-columns:1fr}.rows{grid-template-columns:repeat(2,1fr)}}
-@media(prefers-reduced-motion:no-preference){.sbar i,.vtape i{transition:width .5s ease}}
+
+/* ── skeleton loading (perceived zero-delay) ── */
+.skel{pointer-events:none}
+.skel .sk{background:linear-gradient(90deg,var(--panel2) 25%,var(--line) 50%,var(--panel2) 75%);
+  background-size:200% 100%;border-radius:4px;animation:shimmer 1.4s infinite linear}
+@keyframes shimmer{to{background-position:-200% 0}}
+.sk-line{height:12px;margin:8px 0}.sk-big{height:32px;width:45%}.sk-block{height:60px;margin-top:12px}
+
+/* card entrance */
+@media(prefers-reduced-motion:no-preference){
+  .card.enter{animation:rise .45s cubic-bezier(.22,1,.36,1) both}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+}
+
+/* ── tooltips (CSS-only) ── */
+[data-tip]{position:relative;cursor:help;border-bottom:1px dotted var(--dim)}
+[data-tip]::after{content:attr(data-tip);position:absolute;left:0;bottom:calc(100% + 8px);z-index:60;
+  width:230px;background:#161C29;border:1px solid var(--line2);border-radius:8px;padding:9px 11px;
+  color:var(--text);font-size:10.5px;line-height:1.55;letter-spacing:0;text-transform:none;font-weight:400;
+  box-shadow:var(--shadow-hover);opacity:0;transform:translateY(4px);pointer-events:none;
+  transition:opacity .15s,transform .15s;white-space:normal}
+[data-tip]:hover::after,[data-tip]:focus::after{opacity:1;transform:none}
+
+/* ── how-to-read drawer ── */
+#howto{position:fixed;inset:0;z-index:100;display:none}
+#howto.open{display:block}
+#howto .scrim{position:absolute;inset:0;background:rgba(6,8,12,.6);backdrop-filter:blur(3px)}
+#howto .panel{position:absolute;top:0;right:0;bottom:0;width:min(460px,100%);overflow-y:auto;
+  background:linear-gradient(180deg,var(--panel),var(--bg));border-left:1px solid var(--line2);
+  padding:22px 24px 40px;box-shadow:-24px 0 60px rgba(0,0,0,.5)}
+@media(prefers-reduced-motion:no-preference){
+  #howto.open .panel{animation:slidein .28s cubic-bezier(.22,1,.36,1)}
+  @keyframes slidein{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}}
+#howto h2{font-family:var(--disp);font-size:17px;letter-spacing:.04em;margin-bottom:4px}
+#howto .sub{color:var(--muted);font-size:11px;margin-bottom:18px}
+#howto h3{font-family:var(--disp);font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--liq);margin:20px 0 6px;padding-top:14px;border-top:1px solid var(--line)}
+#howto h3.v{color:var(--vaf)}
+#howto p{color:#B9C1D0;font-size:12px;margin-bottom:8px}
+#howto p b{color:var(--text);font-weight:500}
+#howto-close{position:absolute;top:16px;right:18px;background:none;border:1px solid var(--line2);
+  color:var(--muted);border-radius:999px;width:30px;height:30px;font-size:14px;cursor:pointer;font-family:var(--mono)}
+#howto-close:hover{color:var(--text);border-color:var(--liq)}
+
+#empty{color:var(--muted);padding:48px 0;text-align:center}
+footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:var(--dim);font-size:10px;
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+
+@media(max-width:860px){#macro{grid-template-columns:1fr 1fr}#macro .mbox:nth-child(3){grid-column:1/-1}}
+@media(max-width:600px){
+  #macro{grid-template-columns:1fr}
+  .rows{grid-template-columns:repeat(2,1fr)}
+  .hd{flex-wrap:wrap;padding:12px 16px}
+  #hd-season{display:none!important}
+  [data-tip]::after{width:190px}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>ALTCOIN<span>/</span>TREND TERMINAL</h1>
-    <div>
-      <span id="meta">loading data.json…</span>
-      <span id="stale"> ⚠ data &gt; 24h old</span>
+<header>
+  <div class="hd">
+    <div class="brand"><div class="mark" aria-hidden="true"></div>
+      <h1><span class="eyebrow">ALTCOIN&nbsp;TREND</span>TERMINAL</h1></div>
+    <span id="hd-season"></span>
+    <div class="hd-right">
+      <span id="meta">loading…</span>
+      <span id="stale">⚠ data &gt; 24h old</span>
+      <button id="howto-btn" type="button">HOW TO READ</button>
     </div>
-  </header>
+  </div>
+</header>
 
+<div class="wrap">
   <div id="macro">
     <div class="mbox">
-      <span class="lbl">Global Liquidity Factor</span>
+      <span class="lbl" data-tip="Global Liquidity Factor 0–100: composite of central-bank balance sheets (Fed, ECB, BoJ, China M2), US M2, TGA, RRP and DXY, each as a z-score. Above 60 = liquidity tailwind for risk assets.">Global Liquidity Factor</span>
       <div class="vrow2"><div class="val" id="glf">—</div><span class="tag" id="glf-regime"></span></div>
       <div class="band"><i id="glf-pin" style="left:50%"></i></div>
       <div class="chips" id="glf-chips"></div>
     </div>
     <div class="mbox">
-      <span class="lbl">Repo Market Stress · SOFR−EFFR</span>
+      <span class="lbl" data-tip="SOFR minus EFFR spread, scored 0–1. When banks pay a premium for secured overnight funding, dollar plumbing is under stress — historically bad for crypto liquidity. Below 0.35 is calm.">Repo Stress · SOFR−EFFR</span>
       <div class="vrow2"><div class="val" id="repo">—</div><span class="tag" id="repo-label"></span></div>
       <div class="band inv"><i id="repo-pin" style="left:50%"></i></div>
       <div class="chips" id="repo-chips"></div>
     </div>
-    <div id="regime" style="grid-column:1/-1;display:none;align-items:baseline;gap:10px" class="mbox">
-      <span class="lbl">Market Regime</span>
-      <span id="regime-state" style="font-family:var(--disp);font-weight:700;font-size:15px;margin:0 4px"></span>
+    <div class="mbox">
+      <span class="lbl" data-tip="% of tracked coins whose 90-day return beats BTC's. 75+ = altcoin season (breadth of outperformance), 25 and below = bitcoin season. Computed over this terminal's universe, not CMC top-50.">Altcoin Season Index</span>
+      <div class="vrow2"><div class="val" id="asi">—</div><span class="tag" id="asi-label"></span></div>
+      <div class="band season"><i id="asi-pin" style="left:50%"></i></div>
+      <div class="chips"><span class="chip" id="asi-sample"></span></div>
+    </div>
+    <div id="regime" class="mbox">
+      <span class="lbl" data-tip="Deterministic market state from BTC 30d return, BTC realized-vol percentile, liquidity and repo stress. Rules ordered by severity: capitulation > risk-off > bear > bull > sideways.">Market Regime</span>
+      <span id="regime-state"></span>
       <span class="tag" id="regime-why"></span>
     </div>
     <div id="degraded"></div>
@@ -121,9 +232,9 @@ footer{margin-top:22px;padding-top:12px;border-top:1px solid var(--line);color:v
 
   <div id="ctrl">
     <span id="count" class="cl"></span>
-    <span id="universe" class="cl" style="color:var(--liq)"></span>
+    <span id="universe" class="cl"></span>
     <select id="grp" style="display:none"><option value="">all groups</option></select>
-    <input id="filter" type="text" placeholder="filter symbol…" autocomplete="off">
+    <input id="filter" type="text" placeholder="filter symbol…" autocomplete="off" aria-label="Filter symbols">
     <label class="cl" for="sort">sort</label>
     <select id="sort">
       <option value="trend_score">trend score</option>
@@ -133,16 +244,54 @@ footer{margin-top:22px;padding-top:12px;border-top:1px solid var(--line);color:v
       <option value="rsi">RSI</option>
       <option value="fundamental_score">fundamental</option>
       <option value="composite_score">composite (T+F)</option>
+      <option value="vaf_total">VaF</option>
     </select>
   </div>
 
-  <div id="coins"></div>
-  <div id="empty" hidden>data.json not found — run <b>python3 collect.py</b> first, then serve this folder over HTTP.</div>
+  <div id="coins" aria-live="polite"></div>
+  <div id="empty" hidden>data.json not found — the collector hasn't produced data yet.</div>
 
   <footer>
-    <span>sources: Binance klines · FRED (WALCL, SOFR, EFFR, …) · open.er-api</span>
-    <span>trend_score is an unvalidated heuristic — not trading advice</span>
+    <span>sources: Binance klines · Bybit · FRED · DeFiLlama · open.er-api</span>
+    <span>research tooling — not trading advice</span>
   </footer>
+</div>
+
+<!-- ── How to Read drawer ── -->
+<div id="howto" role="dialog" aria-modal="true" aria-label="How to read this terminal">
+  <div class="scrim" data-close></div>
+  <div class="panel">
+    <button id="howto-close" data-close aria-label="Close">✕</button>
+    <h2>How to read this terminal</h2>
+    <p class="sub">Every number below is also explained inline — hover any dotted label.</p>
+
+    <h3>Trend Score (0–100)</h3>
+    <p>A weighted technical composite per coin: <b>breakout 30%</b> (proximity to 30d high, RSI in the 55–68 momentum zone, volume expansion, ATR expansion), <b>relative strength vs BTC 30%</b>, <b>trend consistency 20%</b> (green-day ratio, EMA20/50 slope), <b>volatility compression 10%</b>, <b>macro 10%</b>. The small chips under the score are its <b>drivers</b> — each chip's number is that component's push above or below neutral, and they sum to score − 50.</p>
+    <p>It is a transparent heuristic, not a backtested model. Green ≥60, amber 40–60, red &lt;40.</p>
+
+    <h3>Macro strip</h3>
+    <p><b>GLF</b> summarizes global liquidity: central-bank balance sheets, US M2, Treasury account, reverse repo and the dollar, blended as z-scores. <b>Repo Stress</b> watches the SOFR−EFFR spread — the plumbing of dollar funding. <b>Market Regime</b> classifies BTC's state with fixed rules; altcoin longs historically work best in BULL TREND with GLF above 60.</p>
+
+    <h3>Altcoin Season Index</h3>
+    <p>The share of tracked coins beating BTC over 90 days. Above <b>75</b> = altcoin season; below <b>25</b> = bitcoin season. It measures <b>breadth</b>, not magnitude — a few giant winners can't fake it.</p>
+
+    <h3>Volume block</h3>
+    <p>14 daily bars of quote volume (closed candles only — the running day is excluded so mornings don't fake a dry-up). The tape below compares the last closed day to the 7-day average: <b>&gt;2.0×</b> is a spike (breakout, news, capitulation), <b>&lt;0.5×</b> means participation is drying up. "Building / fading" is the 3d vs 7d run-rate.</p>
+
+    <h3 class="v">VaF row (DeFi &amp; infra coins)</h3>
+    <p>The Direct Value Accrual Framework scores whether the <b>token</b> — not just the protocol — captures value. <b>PQ</b> /50 protocol quality, <b>NF</b> /50 structural value capture (buybacks, burns, fee share measured from DeFiLlama holders-revenue), <b>RG</b> /50 repricing gap. <b>VaF = PQ+NF+RG</b>, out of 150; 105+ is strong, 120+ elite.</p>
+    <p><b>OTF</b> /50 scores timing only and never changes VaF. <b>VFR</b> is the 30-day confirmation ratio: token-positive value ÷ dilution — <b>N/A</b> means dilution data hasn't been manually verified, never a guess. <b>CONF</b> A–D grades research reliability; machine-only rows cap at B and low data coverage degrades it.</p>
+    <p>The core rule the framework enforces: <b>protocol revenue is not token revenue unless it reaches the token.</b> A great protocol with no value route scores high PQ, low NF — and the verdict says so.</p>
+
+    <h3>F-Score &amp; Composite</h3>
+    <p><b>F-Score</b> is the simpler fundamental composite (TVL growth, revenue yield, fee acceleration, value-accrual share). <b>Composite</b> blends 60% technical + 40% fundamental — fundamentals select, technicals time.</p>
+
+    <h3>Source badges</h3>
+    <p>No badge = Binance primary. <b>BYBIT</b> (amber) = tier-2 fallback, full metrics intact. <b>CS FALLBACK</b> (red) = tier-3, price metrics only, volume history unavailable. <b>MACRO DEGRADED</b> banner = part of the macro layer is neutral-filled; trend scores still compute but their macro slice isn't live.</p>
+
+    <h3>Honesty rules</h3>
+    <p>Missing data is shown as <b>n/a</b> and its weight excluded — never silently zero-filled. Scores are unvalidated heuristics for research prioritization. Nothing here is trading advice.</p>
+  </div>
 </div>
 
 <script>
@@ -153,17 +302,32 @@ const pct=v=>(v>0?'+':'')+(v*100).toFixed(2)+'%';
 const cls=(v,hi,lo)=>v==null?'neu':v>=hi?'pos':v<=lo?'neg':'neu';
 const scoreColor=s=>s>=60?'var(--up)':s>=40?'var(--warn)':'var(--down)';
 const GLF_NAMES={fed:'FED',ecb:'ECB',jpn:'BOJ',china:'CN M2',m2:'US M2',dxy:'DXY',tga:'TGA',rrp:'RRP'};
-
-// components serialize from Python as {name:[z_score, weight]}
 const compZ=v=>Array.isArray(v)?v[0]:(typeof v==='object'&&v!==null?v.z??v.value:v);
+const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-function sparkline(vals,w=104,h=34){
+/* count-up animation for hero numbers */
+function countUp(el,target,decimals=1,suffix=''){
+  if(reduceMotion||target==null){el.textContent=target==null?'n/a':target.toFixed(decimals)+suffix;return;}
+  const dur=650,t0=performance.now(),from=0;
+  function tick(t){
+    const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+    el.textContent=(from+(target-from)*e).toFixed(decimals)+suffix;
+    if(p<1)requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function sparkline(vals,w=86,h=28){
   if(!vals||vals.length<2)return'';
   const mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
   const pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-2-(v-mn)/rg*(h-4)).toFixed(1)}`).join(' ');
   const up=vals[vals.length-1]>=vals[0];
   const col=up?'var(--up)':'var(--down)';
-  return`<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-label="30d price">
+  const id='g'+Math.random().toString(36).slice(2,7);
+  return`<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${col}" stop-opacity=".22"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+    <polygon points="0,${h} ${pts} ${w},${h}" fill="url(#${id})"/>
     <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5"/>
     <circle cx="${w}" cy="${(h-2-(vals[vals.length-1]-mn)/rg*(h-4)).toFixed(1)}" r="2" fill="${col}"/></svg>`;
 }
@@ -173,27 +337,36 @@ function volbars(vols,n=14){
   return`<div class="vbars">`+v.map(x=>`<i style="height:${Math.max(6,x/mx*100)}%"></i>`).join('')+`</div>`;
 }
 
-function render(d){
-  const gen=new Date(d.generated_at);
-  $('meta').textContent='updated '+gen.toISOString().replace('T',' ').slice(0,16)+' UTC';
-  $('stale').style.display=(Date.now()-gen>864e5)?'inline':'none';
+/* skeleton first paint — no blank screen, no "loading" text limbo */
+function skeletons(n=6){
+  $('coins').innerHTML=Array.from({length:n},()=>`
+    <div class="card skel"><div class="sk sk-line" style="width:35%"></div>
+    <div class="sk sk-big"></div><div class="sk sk-line"></div>
+    <div class="sk sk-line" style="width:80%"></div><div class="sk sk-block"></div></div>`).join('');
+}
 
-  // ---- macro: GLF ----
+let LAST=null,LAST_GEN=null;
+
+function render(d,force){
+  // skip full re-render when payload + controls unchanged (refresh tick)
+  const gen=d.generated_at;
+  $('meta').textContent='updated '+new Date(gen).toISOString().replace('T',' ').slice(0,16)+' UTC';
+  $('stale').style.display=(Date.now()-new Date(gen)>864e5)?'inline':'none';
+
+  // ── macro: GLF ──
   const glf=d.macro?.glf_score, gd=d.macro?.glf_details||{};
-  $('glf').textContent=glf!=null?glf.toFixed(1):'n/a';
-  $('glf').style.color=glf!=null?scoreColor(glf):'var(--muted)';
+  countUp($('glf'),glf); $('glf').style.color=glf!=null?scoreColor(glf):'var(--muted)';
   $('glf-regime').textContent=gd.regime||gd.status||'';
   if(glf!=null)$('glf-pin').style.left=Math.max(0,Math.min(100,glf))+'%';
   const comps=gd.components||{};
   $('glf-chips').innerHTML=Object.entries(comps).map(([k,z])=>{
-    const zz=compZ(z);
-    if(zz==null)return'';
+    const zz=compZ(z); if(zz==null)return'';
     return`<span class="chip ${zz>=0?'p':'n'}">${GLF_NAMES[k]||k.toUpperCase()} <b>${zz>0?'+':''}${(+zz).toFixed(2)}σ</b></span>`;
   }).join('')||`<span class="chip">no component detail</span>`;
 
-  // ---- macro: repo ----
+  // ── macro: repo ──
   const rs=d.macro?.repo_stress_score, rd=d.macro?.repo_stress_details||{};
-  $('repo').textContent=rs!=null?rs.toFixed(2):'n/a';
+  countUp($('repo'),rs,2);
   $('repo').style.color=rs!=null?(rs<.35?'var(--up)':rs<.6?'var(--warn)':'var(--down)'):'var(--muted)';
   $('repo-label').textContent=rd.label||rd.status||'';
   if(rs!=null)$('repo-pin').style.left=(rs*100)+'%';
@@ -204,16 +377,29 @@ function render(d){
   if(rd.effr!=null)rchips.push(['EFFR',rd.effr+'%','']);
   $('repo-chips').innerHTML=rchips.map(([k,v,c])=>`<span class="chip ${c}">${k.toUpperCase()} <b>${v}</b></span>`).join('');
 
-  // ---- regime ----
+  // ── macro: alt season ──
+  const asi=d.alt_season;
+  if(asi&&asi.index!=null){
+    countUp($('asi'),asi.index,0);
+    $('asi').style.color=asi.index>=75?'var(--liq)':asi.index<=25?'var(--btc)':'var(--text)';
+    $('asi-label').textContent=asi.label||'';
+    $('asi-pin').style.left=asi.index+'%';
+    $('asi-sample').innerHTML=`${asi.outperformers}/${asi.sample} coins beat BTC · 90d`;
+    $('hd-season').style.display='inline';
+    $('hd-season').innerHTML=`ASI <b style="color:${asi.index>=75?'var(--liq)':asi.index<=25?'var(--btc)':'var(--text)'}">${asi.index}</b> · ${asi.label}`;
+  }else{$('asi').textContent='n/a';$('asi-label').textContent='needs 90d history';}
+
+  // ── regime ──
   const rg=d.regime;
   if(rg&&rg.state&&rg.state!=='UNKNOWN'){
-    const el=$('regime'); el.style.display='flex';
+    $('regime').style.display='flex';
     const st=$('regime-state'); st.textContent=rg.state.replace(/_/g,' ');
-    st.style.color=rg.state==='BULL_TREND'?'var(--up)':rg.state==='SIDEWAYS'?'var(--text)':rg.state==='RISK_OFF'||rg.state==='BEAR_TREND'?'var(--down)':'var(--warn)';
+    st.style.color=rg.state==='BULL_TREND'?'var(--up)':rg.state==='SIDEWAYS'?'var(--text)':
+      rg.state==='RISK_OFF'||rg.state==='BEAR_TREND'?'var(--down)':'var(--warn)';
     $('regime-why').textContent=(rg.reasons||[]).join(' · ');
   }else{$('regime').style.display='none';}
 
-  // ---- degraded banner ----
+  // ── degraded banner ──
   const nComp=gd.active_components, warn=[];
   if(gd.status==='fallback'||gd.status==='error')warn.push('GLF unavailable — score neutral-filled');
   else if(nComp!=null&&nComp<4)warn.push('GLF running on '+nComp+' of 8 components');
@@ -221,12 +407,13 @@ function render(d){
   $('degraded').style.display=warn.length?'block':'none';
   $('degraded').textContent=warn.length?'⚠ MACRO DEGRADED: '+warn.join(' · ')+'. trend_score macro layer is not fully live.':'';
 
-  // ---- coins: sort + filter, then render ----
-  const box=$('coins'); box.innerHTML='';
+  // ── coins: group filter + text filter + sort ──
+  const box=$('coins');
   const q=$('filter').value.trim().toUpperCase();
   const key=$('sort').value;
-  const getv=(c)=>{
+  const getv=c=>{
     if(key==='chg24'){const cl=c.closes_30d;return cl&&cl.length>2?cl[cl.length-1]/cl[cl.length-2]-1:null;}
+    if(key==='vaf_total')return c.vaf?.vaf??null;
     return c[key];
   };
   let entries=Object.entries(d.coins||{});
@@ -247,12 +434,16 @@ function render(d){
   entries.sort((a,b)=>{
     const av=a[1].status==='ok'?getv(a[1]):null, bv=b[1].status==='ok'?getv(b[1]):null;
     if(av==null&&bv==null)return 0; if(av==null)return 1; if(bv==null)return -1;
-    return bv-av; // desc, unavailable last
+    return bv-av;
   });
-  $('count').textContent=entries.length+(q?' / '+total:'')+' coins';
+  $('count').textContent=entries.length+(q||gq?' / '+total:'')+' coins';
   $('universe').textContent=d.universe?.mode&&d.universe.mode!=='default'?'· '+d.universe.mode.toUpperCase():'';
+
+  box.innerHTML='';
+  let i=0;
   for(const[sym,c]of entries){
-    const el=document.createElement('div'); el.className='card';
+    const el=document.createElement('div');
+    el.className='card enter'; el.style.animationDelay=Math.min(i++,10)*30+'ms';
     if(c.status!=='ok'){
       el.innerHTML=`<div class="head"><span class="sym">${sym}</span></div><div class="unavail">data unavailable this cycle</div>`;
       box.appendChild(el); continue;
@@ -260,49 +451,52 @@ function render(d){
     const ts=c.trend_score, closes=c.closes_30d, vols=c.volumes_30d;
     const chg30=closes&&closes.length>1?(closes[closes.length-1]/closes[0]-1):null;
     const chg24=closes&&closes.length>2?(closes[closes.length-1]/closes[closes.length-2]-1):null;
-    const vr=c.vol_ratio;
-    const tapeW=vr!=null?Math.min(100,vr/2*100):0;
+    const vr=c.vol_ratio, tapeW=vr!=null?Math.min(100,vr/2*100):0;
+    const srcBadge=c.data_source==='coinstats'?' <span class="chip n" style="vertical-align:2px">CS FALLBACK</span>'
+      :c.data_source==='bybit'?' <span class="chip" style="vertical-align:2px;border-color:var(--warn);color:var(--warn)">BYBIT</span>':'';
+    const drivers=(c.trend_score_detail?.drivers||[]).slice(0,3);
+    const vaf=c.vaf;
     el.innerHTML=`
       <div class="head">
-        <span class="sym">${sym.replace('USDT','')}<small style="color:var(--dim)">/USDT${c.groups?' · '+c.groups.map(g=>g.toUpperCase()).join(','):''}</small>${c.data_source==='coinstats'?' <span class="chip n" style="vertical-align:2px">CS FALLBACK</span>':c.data_source==='bybit'?' <span class="chip" style="vertical-align:2px;border-color:var(--warn);color:var(--warn)">BYBIT</span>':''}</span>
+        <span class="sym">${sym.replace('USDT','')}<small>/USDT${c.groups?' · '+c.groups.map(g=>g.toUpperCase()).join(','):''}</small>${srcBadge}</span>
         <span class="px"><b>${fmtPx(c.latest_price)}</b>
           <span class="${cls(chg24,0,0)}">${chg24!=null?pct(chg24)+' 24h':''}</span></span>
       </div>
       <div class="scorerow">
         <b style="color:${ts!=null?scoreColor(ts):'var(--muted)'}">${ts!=null?ts.toFixed(1):'n/a'}</b>
-        <span class="sl">trend<br>score</span>
+        <span class="sl" data-tip="Weighted technical composite: breakout 30%, strength vs BTC 30%, trend consistency 20%, compression 10%, macro 10%. Chips below show each component's push above/below neutral.">trend<br>score</span>
         ${sparkline(closes)}
       </div>
       <div class="sbar"><i style="width:${ts||0}%;background:${ts!=null?scoreColor(ts):'transparent'}"></i></div>
-      ${(c.trend_score_detail?.drivers?.length?`<div class="chips" style="margin:-6px 0 10px">`+c.trend_score_detail.drivers.slice(0,3).map(dr=>`<span class="chip ${dr.contribution>=0?'p':'n'}">${dr.component.replace('_',' ')} <b>${dr.contribution>0?'+':''}${dr.contribution}</b></span>`).join('')+`</div>`:'')}
-      ${c.vaf?`<div class="chips" style="margin:0 0 8px">
-        <span class="chip" style="border-color:var(--warn)">VaF <b style="color:${c.vaf.vaf>=105?'var(--up)':c.vaf.vaf>=80?'var(--warn)':'var(--down)'}">${c.vaf.vaf??'—'}/150</b></span>
-        <span class="chip">PQ <b>${c.vaf.pq??'—'}</b></span><span class="chip">NF <b>${c.vaf.nf??'—'}</b></span><span class="chip">RG <b>${c.vaf.rg??'—'}</b></span>
-        <span class="chip">OTF <b>${c.vaf.otf??'—'}</b></span>
-        <span class="chip">VFR <b>${c.vaf.vfr?.display??'N/A'}</b></span>
-        <span class="chip">CONF <b>${c.vaf.confidence}</b></span>
-        <span class="chip ${/Accumulation|Candidate$/.test(c.vaf.verdict)?'p':/Avoid|Broken/.test(c.vaf.verdict)?'n':''}" style="border-color:var(--liq)">${c.vaf.verdict.toUpperCase()}</span>
+      ${drivers.length?`<div class="chips" style="margin:-2px 0 8px">`+drivers.map(dr=>`<span class="chip ${dr.contribution>=0?'p':'n'}">${dr.component.replace('_',' ')} <b>${dr.contribution>0?'+':''}${dr.contribution}</b></span>`).join('')+`</div>`:''}
+      ${vaf?`<div class="chips vafchips" style="margin:0 0 7px">
+        <span class="chip" data-tip="Direct Value Accrual Framework: PQ (protocol quality) + NF (structural token value capture) + RG (repricing gap), each /50. 105+ strong, 120+ elite. Open HOW TO READ for the full method.">VaF <b>${vaf.vaf??'—'}/150</b></span>
+        <span class="chip">PQ <b>${vaf.pq??'—'}</b></span><span class="chip">NF <b>${vaf.nf??'—'}</b></span><span class="chip">RG <b>${vaf.rg??'—'}</b></span>
+        <span class="chip" data-tip="Opportunity & Timing /50 — chart structure, relative strength, catalyst & supply timing. Separate from VaF: strong asset ≠ good entry.">OTF <b>${vaf.otf??'—'}</b></span>
+        <span class="chip" data-tip="Value Flow Ratio: 30d token-positive value ÷ 30d dilution. N/A = dilution not manually verified yet — never guessed.">VFR <b>${vaf.vfr?.display??'N/A'}</b></span>
+        <span class="chip" data-tip="Research confidence A–D from data coverage. Machine-only scoring caps at B; manual research in vaf_overrides.json raises coverage.">CONF <b>${vaf.confidence}</b></span>
+        <span class="chip ${/Accumulation|Candidate$/.test(vaf.verdict)?'p':/Avoid|Broken/.test(vaf.verdict)?'n':''}" style="border-color:var(--vaf)">${vaf.verdict.toUpperCase()}</span>
       </div>`:''}
-      ${c.fundamental_score!=null?`<div class="chips" style="margin:0 0 10px">
-        <span class="chip" style="border-color:var(--liq)">F-SCORE <b style="color:${scoreColor(c.fundamental_score)}">${c.fundamental_score}</b></span>
-        ${c.fundamental_detail?.value_accrual_ratio!=null?`<span class="chip ${c.fundamental_detail.value_accrual_ratio>=0.5?'p':'n'}">VALUE ACCRUAL <b>${Math.round(c.fundamental_detail.value_accrual_ratio*100)}%</b></span>`:''}
-        ${c.fundamental_detail?.price_to_fees!=null?`<span class="chip">P/F <b>${c.fundamental_detail.price_to_fees}×</b></span>`:''}
-        ${c.composite_score!=null?`<span class="chip">COMPOSITE <b style="color:${scoreColor(c.composite_score)}">${c.composite_score}</b></span>`:''}
+      ${c.fundamental_score!=null?`<div class="chips" style="margin:0 0 8px">
+        <span class="chip" style="border-color:var(--liq)" data-tip="Fundamental composite from DeFiLlama: TVL growth, revenue yield on mcap, fee acceleration, value-accrual share.">F-SCORE <b style="color:${scoreColor(c.fundamental_score)}">${c.fundamental_score}</b></span>
+        ${c.fundamental_detail?.value_accrual_ratio!=null?`<span class="chip ${c.fundamental_detail.value_accrual_ratio>=0.5?'p':'n'}" data-tip="Share of protocol revenue that actually reaches token holders (buybacks, burns, fee share) over 30d — measured, not narrated.">VALUE ACCRUAL <b>${Math.round(c.fundamental_detail.value_accrual_ratio*100)}%</b></span>`:''}
+        ${c.fundamental_detail?.price_to_fees!=null?`<span class="chip" data-tip="Market cap ÷ annualized protocol fees — the crypto P/E analog. Lower = cheaper per dollar of fees.">P/F <b>${c.fundamental_detail.price_to_fees}×</b></span>`:''}
+        ${c.composite_score!=null?`<span class="chip" data-tip="60% technical + 40% fundamental. Fundamentals select, technicals time.">COMPOSITE <b style="color:${scoreColor(c.composite_score)}">${c.composite_score}</b></span>`:''}
       </div>`:''}
       <div class="rows">
-        <div><span class="k">RSI-14</span><span class="${c.rsi==null?'neu':c.rsi>=70||c.rsi<=30?'wn':'neu'}">${c.rsi??'n/a'}</span></div>
-        <div><span class="k">vs BTC 3/7d</span><span class="${cls(c.btc_ratio_trend,1e-4,-1e-4)}">${c.btc_ratio_trend!=null?(c.btc_ratio_trend>0?'+':'')+c.btc_ratio_trend.toFixed(5):'n/a'}</span></div>
-        <div><span class="k">30d</span><span class="${cls(chg30,0,0)}">${chg30!=null?pct(chg30):'n/a'}</span></div>
-        <div><span class="k">Momentum</span><span class="${cls(c.momentum,1e-4,-1e-4)}">${c.momentum!=null?(c.momentum>0?'+':'')+c.momentum.toFixed(5):'n/a'}</span></div>
-        <div><span class="k">Volatility</span><span class="neu">${c.volatility!=null?(c.volatility*100).toFixed(2)+'%':'n/a'}</span></div>
-        <div><span class="k">Ret 24h</span><span class="${cls(c.return,0,0)}">${c.return!=null?pct(c.return):'n/a'}</span></div>
+        <div><span class="k" data-tip="14-day RSI (simple average). 55–68 is the momentum sweet spot rewarded by the breakout component; 70+ overbought, 30− oversold.">RSI-14</span><span class="${c.rsi==null?'neu':c.rsi>=70||c.rsi<=30?'wn':'neu'}">${c.rsi??'n/a'}</span></div>
+        <div><span class="k" data-tip="Momentum of the coin/BTC price ratio: 3-day avg return minus 7-day. Positive = gaining vs BTC right now.">vs BTC 3/7d</span><span class="${cls(c.btc_ratio_trend,1e-4,-1e-4)}">${c.btc_ratio_trend!=null?(c.btc_ratio_trend>0?'+':'')+c.btc_ratio_trend.toFixed(5):'n/a'}</span></div>
+        <div><span class="k" data-tip="Price change over the last 30 daily closes.">30d</span><span class="${cls(chg30,0,0)}">${chg30!=null?pct(chg30):'n/a'}</span></div>
+        <div><span class="k" data-tip="Return acceleration: 3-day average daily return minus 7-day average. Positive = trend speeding up.">Momentum</span><span class="${cls(c.momentum,1e-4,-1e-4)}">${c.momentum!=null?(c.momentum>0?'+':'')+c.momentum.toFixed(5):'n/a'}</span></div>
+        <div><span class="k" data-tip="Standard deviation of daily returns (30d window).">Volatility</span><span class="neu">${c.volatility!=null?(c.volatility*100).toFixed(2)+'%':'n/a'}</span></div>
+        <div><span class="k" data-tip="Latest daily return (last closed candle vs prior).">Ret 24h</span><span class="${cls(c.return,0,0)}">${c.return!=null?pct(c.return):'n/a'}</span></div>
       </div>
       <div class="vol">
-        <div class="vh"><span class="k">${c.data_source==='coinstats'?'Volume · history n/a on fallback source':'Volume · 14d (closed candles)'}</span><span class="amt">${c.vol_24h_usd!=null?fmtUsd(c.vol_24h_usd):'n/a'}</span></div>
+        <div class="vh"><span class="k" data-tip="Daily quote volume in USDT, closed candles only — today's partial candle is excluded so mornings don't fake a volume collapse.">${c.data_source==='coinstats'?'Volume · history n/a on fallback source':'Volume · 14d (closed candles)'}</span><span class="amt">${c.vol_24h_usd!=null?fmtUsd(c.vol_24h_usd):'n/a'}</span></div>
         ${volbars(vols)}
         <div class="vrow">
           <div class="vtape"><i style="width:${tapeW}%"></i><s></s></div>
-          <span class="vratio ${vr==null?'':vr>=2?'pos':vr<=0.5?'neg':'neu'}">${vr!=null?vr.toFixed(2)+'×':'n/a'}</span>
+          <span class="vratio ${vr==null?'':vr>=2?'pos':vr<=0.5?'neg':'neu'}" data-tip="Last closed day ÷ 7-day average. Marker sits at 1.0×; a full bar is 2.0×+ — a genuine participation spike.">${vr!=null?vr.toFixed(2)+'×':'n/a'}</span>
         </div>
         <div class="vmeta">
           <span>7d avg ${c.vol_avg_7d_usd!=null?fmtUsd(c.vol_avg_7d_usd):'n/a'}</span>
@@ -311,24 +505,35 @@ function render(d){
       </div>`;
     box.appendChild(el);
   }
+  LAST_GEN=gen;
 }
 
-let LAST=null;
 async function load(){
   try{
     const r=await fetch('data.json?t='+Date.now());
     if(!r.ok)throw 0;
-    LAST=await r.json();
-    render(LAST);
+    const d=await r.json();
+    LAST=d;
+    if(d.generated_at!==LAST_GEN)render(d);   // no jank on unchanged refresh ticks
     $('empty').hidden=true;
   }catch(e){
-    $('meta').textContent='no data';
-    $('empty').hidden=false;
+    if(!LAST){$('meta').textContent='no data';$('coins').innerHTML='';$('empty').hidden=false;}
   }
 }
-$('sort').addEventListener('change',()=>LAST&&render(LAST));
-$('filter').addEventListener('input',()=>LAST&&render(LAST));
-$('grp').addEventListener('change',()=>LAST&&render(LAST));
+const rerender=()=>{LAST_GEN=null;LAST&&render(LAST);};
+$('sort').addEventListener('change',rerender);
+$('filter').addEventListener('input',rerender);
+$('grp').addEventListener('change',rerender);
+
+/* how-to-read drawer */
+const howto=$('howto');
+$('howto-btn').addEventListener('click',()=>{howto.classList.add('open');document.body.style.overflow='hidden';});
+howto.addEventListener('click',e=>{
+  if(e.target.hasAttribute('data-close')){howto.classList.remove('open');document.body.style.overflow='';}
+});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&howto.classList.contains('open')){howto.classList.remove('open');document.body.style.overflow='';}});
+
+skeletons();
 load();
 setInterval(load,60000);
 </script>
