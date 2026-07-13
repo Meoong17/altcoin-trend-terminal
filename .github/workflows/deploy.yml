@@ -50,7 +50,7 @@ jobs:
           git config user.email "actions@github.com"
           git add history.db
           git diff --cached --quiet || git commit -m "history: $(date -u +%F) snapshot"
-          git push
+          git pull --rebase --autostash && git push
 
       - name: Assemble site
         run: |
