@@ -302,7 +302,7 @@ const pct=v=>(v>0?'+':'')+(v*100).toFixed(2)+'%';
 const cls=(v,hi,lo)=>v==null?'neu':v>=hi?'pos':v<=lo?'neg':'neu';
 const scoreColor=s=>s>=60?'var(--up)':s>=40?'var(--warn)':'var(--down)';
 const GLF_NAMES={fed:'FED',ecb:'ECB',jpn:'BOJ',china:'CN M2',m2:'US M2',dxy:'DXY',tga:'TGA',rrp:'RRP'};
-const compZ=v=>Array.isArray(v)?v[0]:(typeof v==='object'&&v!==null?v.z??v.value:v);
+const compZ=v=>Array.isArray(v)?v[0]:(typeof v==='object'&&v!==null?v.z_score??v.z??v.value??null:v);
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* count-up animation for hero numbers */
