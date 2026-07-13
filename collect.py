@@ -31,7 +31,7 @@ load_dotenv()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from altcoin.analyzer import (analyze_multiple_coins, discover_top_symbols,
+from altcoin.analyzer import (analyze_multiple_coins, discover_top_symbols, compute_alt_season,
                               rank_symbols_by_volume, fetch_klines)
 from altcoin.features import score_components
 from altcoin.regime import classify_regime
@@ -59,6 +59,13 @@ SYMBOL_GROUPS = {
     # DeFi tier: symbols mirror the fundamentals layer's protocol map so
     # the two universes can't drift apart
     "defi": sorted(DEFI_PROTOCOLS),
+    # Infrastructure: oracles/data/interop — the non-DeFi sector with the
+    # most measurable fundamentals (Chainlink & Pyth have fee data on
+    # DeFiLlama, wired in fundamentals.DEFI_PROTOCOLS)
+    "infra": ["LINKUSDT", "PYTHUSDT", "GRTUSDT", "WUSDT", "AXLUSDT"],
+    # AI/compute: strong-narrative sector; fundamentals mostly n/a
+    # free-tier, so these ride the technical + VaF-manual layers
+    "ai": ["TAOUSDT", "RENDERUSDT", "FETUSDT", "NEARUSDT", "WLDUSDT"],
     "l1": [
         "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT",
         "TRXUSDT", "TONUSDT", "AVAXUSDT", "DOTUSDT", "LTCUSDT", "BCHUSDT",
@@ -292,9 +299,15 @@ def main():
     regime = classify_regime(btc_closes, glf_score=glf_score, repo_stress=repo_score)
     print(f"[Collect] Market regime: {regime['state']} ({'; '.join(regime['reasons'])})")
 
+    alt_season = compute_alt_season(coin_results)
+    if alt_season:
+        print(f"[Collect] Alt Season Index: {alt_season['index']} ({alt_season['label']}, "
+              f"{alt_season['outperformers']}/{alt_season['sample']} beat BTC 90d)")
+
     output = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "universe": universe,
+        "alt_season": alt_season,
         "regime": regime,
         "macro": {
             "glf_score": glf_score,

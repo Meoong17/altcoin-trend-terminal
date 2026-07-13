@@ -63,6 +63,10 @@ DEFI_PROTOCOLS = {
     "SNXUSDT": "synthetix",
     "ENAUSDT": "ethena",
     "MKRUSDT": "sky",
+    # infra group members with fee data on DeFiLlama (best-effort slugs;
+    # a wrong slug logs + skips, the coin keeps its technical score)
+    "LINKUSDT": "chainlink",
+    "PYTHUSDT": "pyth-network",
 }
 
 WEIGHTS = {"tvl": 0.20, "revenue": 0.20, "fee_growth": 0.15, "value_accrual": 0.20}

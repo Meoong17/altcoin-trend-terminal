@@ -257,9 +257,20 @@ def analyze_coin(symbol, btc_closes=None, klines=None):
     from altcoin.features import compute_feature_set
     feats = compute_feature_set(highs, lows, closes, quote_volumes[:-1], btc_closes)
 
+    # 90d relative performance for the Altcoin Season Index. Uses the
+    # full 100-candle window; None (never a guess) when the coin or the
+    # BTC series is younger than 91 days.
+    ret_90d = closes[-1] / closes[-91] - 1 if len(closes) >= 91 else None
+    btc_ret_90d = (btc_closes[-1] / btc_closes[-91] - 1
+                   if btc_closes and len(btc_closes) >= 91 else None)
+    outperforms = (ret_90d > btc_ret_90d
+                   if ret_90d is not None and btc_ret_90d is not None else None)
+
     result = {
         "symbol": symbol,
         "status": "ok",
+        "ret_90d": round(ret_90d, 4) if ret_90d is not None else None,
+        "outperforms_btc_90d": outperforms,
         "latest_price": closes[-1],
         "rsi": rsi,
         # 30d series for frontend sparklines. Volumes are CLOSED candles only
@@ -346,6 +357,27 @@ def analyze_multiple_coins(symbols, btc_symbol="BTCUSDT"):
         if still:
             print(f"[Analyzer] Unrecoverable this cycle: {still}", file=sys.stderr)
     return results
+
+
+def compute_alt_season(results):
+    """
+    Altcoin Season Index over the TRACKED universe (not CMC's top-50 —
+    label honestly): % of coins whose 90d return beats BTC's 90d return.
+    Classic bands: >=75 Altcoin Season, <=25 Bitcoin Season, else the
+    middle zone. Pure function; coins without a 90d flag are excluded
+    from the sample rather than counted as underperformers.
+    Returns dict or None when fewer than 5 coins have a valid flag.
+    """
+    flags = [r["outperforms_btc_90d"] for r in results.values()
+             if r.get("status") == "ok" and r.get("outperforms_btc_90d") is not None]
+    if len(flags) < 5:
+        return None
+    idx = round(100.0 * sum(flags) / len(flags))
+    label = ("ALTCOIN SEASON" if idx >= 75 else
+             "BITCOIN SEASON" if idx <= 25 else
+             "ALT-LEANING" if idx >= 50 else "BTC-LEANING")
+    return {"index": idx, "label": label, "sample": len(flags),
+            "outperformers": sum(flags)}
 
 
 if __name__ == "__main__":
@@ -645,5 +677,17 @@ if __name__ == "__main__":
         pass
     print(f"✅ PASS: multi-group resolver — merge {len(ms)} symbols, tagging, unknown-group rejection\n")
 
+    # Altcoin Season Index aggregator
+    fake = {f"C{i}USDT": {"status": "ok", "outperforms_btc_90d": i < 8} for i in range(10)}
+    fake["NEWUSDT"] = {"status": "ok", "outperforms_btc_90d": None}   # young coin -> excluded
+    fake["DEADUSDT"] = {"status": "unavailable"}
+    asi = compute_alt_season(fake)
+    print(f"alt season: {asi}")
+    assert asi["index"] == 80 and asi["label"] == "ALTCOIN SEASON" and asi["sample"] == 10
+    assert compute_alt_season({"A": {"status": "ok", "outperforms_btc_90d": True}}) is None, \
+        "tiny sample must return None, not a confident index"
+    print("✅ PASS: alt season index — band labels, young-coin exclusion, min-sample guard\n")
+
     print("ALL SELF-TESTS PASSED — confirms the same code path produces coin-specific,")
     print("distinguishable results for different symbols, not hardcoded output.")
+
