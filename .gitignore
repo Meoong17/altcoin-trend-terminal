@@ -1,0 +1,22 @@
+# secrets — never commit
+.env
+
+# per-cycle outputs (regenerated; data.json is deployed, not versioned)
+data.json
+
+# API caches
+.repo_stress_cache.json
+.global_liquidity_cache.json
+.fundamentals_cache.json
+
+# local environment
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# local history.db backups (the rotation dir from the VPS tutorial)
+backups/
+
+# NOTE: history.db itself is deliberately NOT ignored — the GitHub
+# Actions workflow commits it every cycle; it is the training dataset.

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Altcoin Trend Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0E14; --panel:#11151E; --panel2:#0E1219; --line:#1E2530;
+  --text:#D9DEE8; --muted:#6B7688; --dim:#3A4252;
+  --up:#3FDE8F; --down:#F06A5A; --warn:#E8B44F; --liq:#4FC3E8;
+  --mono:'JetBrains Mono','DejaVu Sans Mono',monospace;
+  --disp:'Space Grotesk','Liberation Sans',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.5;min-height:100vh}
+.wrap{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
+
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
+h1{font-family:var(--disp);font-weight:700;font-size:18px;letter-spacing:.04em}
+h1 span{color:var(--liq)}
+#meta{color:var(--muted);font-size:11px}
+#stale{display:none;color:var(--warn);font-size:11px}
+
+/* macro strip */
+#macro{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+.mbox{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px}
+.mbox .lbl{color:var(--muted);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.mbox .vrow2{display:flex;align-items:baseline;gap:10px}
+.mbox .val{font-size:26px;font-weight:700;margin:2px 0 2px}
+.mbox .tag{font-size:10px;letter-spacing:.08em;color:var(--muted)}
+.band{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--down),var(--warn) 45%,var(--up));position:relative;margin:8px 0 10px}
+.band i{position:absolute;top:-3px;width:2px;height:10px;background:var(--text);box-shadow:0 0 0 1px var(--bg)}
+.band.inv{background:linear-gradient(90deg,var(--up),var(--warn) 55%,var(--down))}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:9.5px;letter-spacing:.05em;padding:2px 7px;border-radius:3px;border:1px solid var(--line);background:var(--panel2);color:var(--muted)}
+.chip b{font-weight:500}
+.chip.p b{color:var(--up)} .chip.n b{color:var(--down)}
+#degraded{display:none;grid-column:1/-1;border:1px solid var(--warn);border-radius:6px;padding:8px 12px;color:var(--warn);font-size:11px;background:rgba(232,180,79,.06)}
+
+/* controls */
+#ctrl{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+#ctrl .cl{color:var(--muted);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+#count{margin-right:auto}
+#filter,#sort,#grp{background:var(--panel);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:12px;border-radius:4px;padding:5px 9px;outline:none}
+#filter{width:150px}
+#filter:focus,#sort:focus,#grp:focus{border-color:var(--liq)}
+
+/* coin grid */
+#coins{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px}
+.card .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.card .sym{font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.03em}
+.card .px{text-align:right}
+.card .px b{font-size:14px;font-weight:500}
+.card .px span{display:block;font-size:10.5px}
+.scorerow{display:flex;align-items:center;gap:12px;margin:4px 0 2px}
+.scorerow b{font-size:32px;font-weight:700;line-height:1}
+.scorerow .sl{color:var(--muted);font-size:10px;letter-spacing:.1em;text-transform:uppercase;line-height:1.3}
+.spark{margin-left:auto}
+.sbar{height:5px;border-radius:3px;background:var(--panel2);border:1px solid var(--line);margin:8px 0 12px;overflow:hidden}
+.sbar i{display:block;height:100%;border-radius:3px}
+.rows{display:grid;grid-template-columns:repeat(3,1fr);gap:7px 12px;font-size:12px}
+.rows .k{color:var(--muted);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;display:block}
+.pos{color:var(--up)} .neg{color:var(--down)} .neu{color:var(--text)} .wn{color:var(--warn)}
+
+/* volume block */
+.vol{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+.vol .vh{display:flex;justify-content:space-between;align-items:baseline}
+.vol .k{color:var(--muted);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase}
+.vol .amt{font-weight:500}
+.vbars{display:flex;align-items:flex-end;gap:2px;height:34px;margin:6px 0 4px}
+.vbars i{flex:1;background:var(--dim);border-radius:1px;min-height:2px}
+.vbars i:last-child{background:var(--liq)}
+.vrow{display:flex;align-items:center;gap:10px}
+.vtape{flex:1;height:13px;background:var(--panel2);border:1px solid var(--line);border-radius:3px;position:relative;overflow:hidden}
+.vtape i{position:absolute;left:0;top:0;bottom:0;background:rgba(79,195,232,.35);border-right:2px solid var(--liq)}
+.vtape s{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--dim);left:50%}
+.vratio{min-width:52px;text-align:right;font-size:11.5px}
+.vmeta{color:var(--muted);font-size:10px;margin-top:4px;display:flex;justify-content:space-between}
+
+.unavail{color:var(--muted);font-size:12px;padding:6px 0}
+#empty{color:var(--muted);padding:40px 0;text-align:center}
+footer{margin-top:22px;padding-top:12px;border-top:1px solid var(--line);color:var(--dim);font-size:10px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+@media(max-width:600px){#macro{grid-template-columns:1fr}.rows{grid-template-columns:repeat(2,1fr)}}
+@media(prefers-reduced-motion:no-preference){.sbar i,.vtape i{transition:width .5s ease}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ALTCOIN<span>/</span>TREND TERMINAL</h1>
+    <div>
+      <span id="meta">loading data.json…</span>
+      <span id="stale"> ⚠ data &gt; 24h old</span>
+    </div>
+  </header>
+
+  <div id="macro">
+    <div class="mbox">
+      <span class="lbl">Global Liquidity Factor</span>
+      <div class="vrow2"><div class="val" id="glf">—</div><span class="tag" id="glf-regime"></span></div>
+      <div class="band"><i id="glf-pin" style="left:50%"></i></div>
+      <div class="chips" id="glf-chips"></div>
+    </div>
+    <div class="mbox">
+      <span class="lbl">Repo Market Stress · SOFR−EFFR</span>
+      <div class="vrow2"><div class="val" id="repo">—</div><span class="tag" id="repo-label"></span></div>
+      <div class="band inv"><i id="repo-pin" style="left:50%"></i></div>
+      <div class="chips" id="repo-chips"></div>
+    </div>
+    <div id="regime" style="grid-column:1/-1;display:none;align-items:baseline;gap:10px" class="mbox">
+      <span class="lbl">Market Regime</span>
+      <span id="regime-state" style="font-family:var(--disp);font-weight:700;font-size:15px;margin:0 4px"></span>
+      <span class="tag" id="regime-why"></span>
+    </div>
+    <div id="degraded"></div>
+  </div>
+
+  <div id="ctrl">
+    <span id="count" class="cl"></span>
+    <span id="universe" class="cl" style="color:var(--liq)"></span>
+    <select id="grp" style="display:none"><option value="">all groups</option></select>
+    <input id="filter" type="text" placeholder="filter symbol…" autocomplete="off">
+    <label class="cl" for="sort">sort</label>
+    <select id="sort">
+      <option value="trend_score">trend score</option>
+      <option value="vol_ratio">volume spike (ratio)</option>
+      <option value="chg24">24h change</option>
+      <option value="vol_24h_usd">volume 24h</option>
+      <option value="rsi">RSI</option>
+      <option value="fundamental_score">fundamental</option>
+      <option value="composite_score">composite (T+F)</option>
+    </select>
+  </div>
+
+  <div id="coins"></div>
+  <div id="empty" hidden>data.json not found — run <b>python3 collect.py</b> first, then serve this folder over HTTP.</div>
+
+  <footer>
+    <span>sources: Binance klines · FRED (WALCL, SOFR, EFFR, …) · open.er-api</span>
+    <span>trend_score is an unvalidated heuristic — not trading advice</span>
+  </footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmtUsd=v=>v>=1e9?'$'+(v/1e9).toFixed(2)+'B':v>=1e6?'$'+(v/1e6).toFixed(0)+'M':'$'+(v/1e3).toFixed(0)+'K';
+const fmtPx=v=>v>=1000?v.toLocaleString('en-US',{maximumFractionDigits:0}):v>=1?v.toFixed(2):v.toPrecision(4);
+const pct=v=>(v>0?'+':'')+(v*100).toFixed(2)+'%';
+const cls=(v,hi,lo)=>v==null?'neu':v>=hi?'pos':v<=lo?'neg':'neu';
+const scoreColor=s=>s>=60?'var(--up)':s>=40?'var(--warn)':'var(--down)';
+const GLF_NAMES={fed:'FED',ecb:'ECB',jpn:'BOJ',china:'CN M2',m2:'US M2',dxy:'DXY',tga:'TGA',rrp:'RRP'};
+
+// components serialize from Python as {name:[z_score, weight]}
+const compZ=v=>Array.isArray(v)?v[0]:(typeof v==='object'&&v!==null?v.z??v.value:v);
+
+function sparkline(vals,w=104,h=34){
+  if(!vals||vals.length<2)return'';
+  const mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
+  const pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-2-(v-mn)/rg*(h-4)).toFixed(1)}`).join(' ');
+  const up=vals[vals.length-1]>=vals[0];
+  const col=up?'var(--up)':'var(--down)';
+  return`<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-label="30d price">
+    <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5"/>
+    <circle cx="${w}" cy="${(h-2-(vals[vals.length-1]-mn)/rg*(h-4)).toFixed(1)}" r="2" fill="${col}"/></svg>`;
+}
+function volbars(vols,n=14){
+  if(!vols||!vols.length)return'';
+  const v=vols.slice(-n),mx=Math.max(...v)||1;
+  return`<div class="vbars">`+v.map(x=>`<i style="height:${Math.max(6,x/mx*100)}%"></i>`).join('')+`</div>`;
+}
+
+function render(d){
+  const gen=new Date(d.generated_at);
+  $('meta').textContent='updated '+gen.toISOString().replace('T',' ').slice(0,16)+' UTC';
+  $('stale').style.display=(Date.now()-gen>864e5)?'inline':'none';
+
+  // ---- macro: GLF ----
+  const glf=d.macro?.glf_score, gd=d.macro?.glf_details||{};
+  $('glf').textContent=glf!=null?glf.toFixed(1):'n/a';
+  $('glf').style.color=glf!=null?scoreColor(glf):'var(--muted)';
+  $('glf-regime').textContent=gd.regime||gd.status||'';
+  if(glf!=null)$('glf-pin').style.left=Math.max(0,Math.min(100,glf))+'%';
+  const comps=gd.components||{};
+  $('glf-chips').innerHTML=Object.entries(comps).map(([k,z])=>{
+    const zz=compZ(z);
+    if(zz==null)return'';
+    return`<span class="chip ${zz>=0?'p':'n'}">${GLF_NAMES[k]||k.toUpperCase()} <b>${zz>0?'+':''}${(+zz).toFixed(2)}σ</b></span>`;
+  }).join('')||`<span class="chip">no component detail</span>`;
+
+  // ---- macro: repo ----
+  const rs=d.macro?.repo_stress_score, rd=d.macro?.repo_stress_details||{};
+  $('repo').textContent=rs!=null?rs.toFixed(2):'n/a';
+  $('repo').style.color=rs!=null?(rs<.35?'var(--up)':rs<.6?'var(--warn)':'var(--down)'):'var(--muted)';
+  $('repo-label').textContent=rd.label||rd.status||'';
+  if(rs!=null)$('repo-pin').style.left=(rs*100)+'%';
+  const rchips=[];
+  if(rd.spread_bps!=null)rchips.push(['spread',rd.spread_bps+'bp',rd.spread_bps>10?'n':'p']);
+  if(rd.percentile!=null)rchips.push(['pctile',Math.round(rd.percentile*100)+'%',rd.percentile>.8?'n':'p']);
+  if(rd.sofr!=null)rchips.push(['SOFR',rd.sofr+'%','']);
+  if(rd.effr!=null)rchips.push(['EFFR',rd.effr+'%','']);
+  $('repo-chips').innerHTML=rchips.map(([k,v,c])=>`<span class="chip ${c}">${k.toUpperCase()} <b>${v}</b></span>`).join('');
+
+  // ---- regime ----
+  const rg=d.regime;
+  if(rg&&rg.state&&rg.state!=='UNKNOWN'){
+    const el=$('regime'); el.style.display='flex';
+    const st=$('regime-state'); st.textContent=rg.state.replace(/_/g,' ');
+    st.style.color=rg.state==='BULL_TREND'?'var(--up)':rg.state==='SIDEWAYS'?'var(--text)':rg.state==='RISK_OFF'||rg.state==='BEAR_TREND'?'var(--down)':'var(--warn)';
+    $('regime-why').textContent=(rg.reasons||[]).join(' · ');
+  }else{$('regime').style.display='none';}
+
+  // ---- degraded banner ----
+  const nComp=gd.active_components, warn=[];
+  if(gd.status==='fallback'||gd.status==='error')warn.push('GLF unavailable — score neutral-filled');
+  else if(nComp!=null&&nComp<4)warn.push('GLF running on '+nComp+' of 8 components');
+  if(rd.status&&rd.status!=='ok')warn.push('repo stress unavailable — neutral-filled');
+  $('degraded').style.display=warn.length?'block':'none';
+  $('degraded').textContent=warn.length?'⚠ MACRO DEGRADED: '+warn.join(' · ')+'. trend_score macro layer is not fully live.':'';
+
+  // ---- coins: sort + filter, then render ----
+  const box=$('coins'); box.innerHTML='';
+  const q=$('filter').value.trim().toUpperCase();
+  const key=$('sort').value;
+  const getv=(c)=>{
+    if(key==='chg24'){const cl=c.closes_30d;return cl&&cl.length>2?cl[cl.length-1]/cl[cl.length-2]-1:null;}
+    return c[key];
+  };
+  let entries=Object.entries(d.coins||{});
+  const total=entries.length;
+  const allGroups=d.universe?.groups||[];
+  const grpSel=$('grp');
+  if(allGroups.length>1){
+    if(grpSel.options.length!==allGroups.length+1){
+      const keep=grpSel.value;
+      grpSel.innerHTML='<option value="">all groups</option>'+allGroups.map(g=>`<option value="${g}">${g.toUpperCase()}</option>`).join('');
+      grpSel.value=keep;
+    }
+    grpSel.style.display='inline-block';
+  }else{grpSel.style.display='none';}
+  const gq=grpSel.value;
+  if(gq)entries=entries.filter(([,c])=>(c.groups||[]).includes(gq));
+  if(q)entries=entries.filter(([s])=>s.includes(q));
+  entries.sort((a,b)=>{
+    const av=a[1].status==='ok'?getv(a[1]):null, bv=b[1].status==='ok'?getv(b[1]):null;
+    if(av==null&&bv==null)return 0; if(av==null)return 1; if(bv==null)return -1;
+    return bv-av; // desc, unavailable last
+  });
+  $('count').textContent=entries.length+(q?' / '+total:'')+' coins';
+  $('universe').textContent=d.universe?.mode&&d.universe.mode!=='default'?'· '+d.universe.mode.toUpperCase():'';
+  for(const[sym,c]of entries){
+    const el=document.createElement('div'); el.className='card';
+    if(c.status!=='ok'){
+      el.innerHTML=`<div class="head"><span class="sym">${sym}</span></div><div class="unavail">data unavailable this cycle</div>`;
+      box.appendChild(el); continue;
+    }
+    const ts=c.trend_score, closes=c.closes_30d, vols=c.volumes_30d;
+    const chg30=closes&&closes.length>1?(closes[closes.length-1]/closes[0]-1):null;
+    const chg24=closes&&closes.length>2?(closes[closes.length-1]/closes[closes.length-2]-1):null;
+    const vr=c.vol_ratio;
+    const tapeW=vr!=null?Math.min(100,vr/2*100):0;
+    el.innerHTML=`
+      <div class="head">
+        <span class="sym">${sym.replace('USDT','')}<small style="color:var(--dim)">/USDT${c.groups?' · '+c.groups.map(g=>g.toUpperCase()).join(','):''}</small>${c.data_source==='coinstats'?' <span class="chip n" style="vertical-align:2px">CS FALLBACK</span>':c.data_source==='bybit'?' <span class="chip" style="vertical-align:2px;border-color:var(--warn);color:var(--warn)">BYBIT</span>':''}</span>
+        <span class="px"><b>${fmtPx(c.latest_price)}</b>
+          <span class="${cls(chg24,0,0)}">${chg24!=null?pct(chg24)+' 24h':''}</span></span>
+      </div>
+      <div class="scorerow">
+        <b style="color:${ts!=null?scoreColor(ts):'var(--muted)'}">${ts!=null?ts.toFixed(1):'n/a'}</b>
+        <span class="sl">trend<br>score</span>
+        ${sparkline(closes)}
+      </div>
+      <div class="sbar"><i style="width:${ts||0}%;background:${ts!=null?scoreColor(ts):'transparent'}"></i></div>
+      ${(c.trend_score_detail?.drivers?.length?`<div class="chips" style="margin:-6px 0 10px">`+c.trend_score_detail.drivers.slice(0,3).map(dr=>`<span class="chip ${dr.contribution>=0?'p':'n'}">${dr.component.replace('_',' ')} <b>${dr.contribution>0?'+':''}${dr.contribution}</b></span>`).join('')+`</div>`:'')}
+      ${c.vaf?`<div class="chips" style="margin:0 0 8px">
+        <span class="chip" style="border-color:var(--warn)">VaF <b style="color:${c.vaf.vaf>=105?'var(--up)':c.vaf.vaf>=80?'var(--warn)':'var(--down)'}">${c.vaf.vaf??'—'}/150</b></span>
+        <span class="chip">PQ <b>${c.vaf.pq??'—'}</b></span><span class="chip">NF <b>${c.vaf.nf??'—'}</b></span><span class="chip">RG <b>${c.vaf.rg??'—'}</b></span>
+        <span class="chip">OTF <b>${c.vaf.otf??'—'}</b></span>
+        <span class="chip">VFR <b>${c.vaf.vfr?.display??'N/A'}</b></span>
+        <span class="chip">CONF <b>${c.vaf.confidence}</b></span>
+        <span class="chip ${/Accumulation|Candidate$/.test(c.vaf.verdict)?'p':/Avoid|Broken/.test(c.vaf.verdict)?'n':''}" style="border-color:var(--liq)">${c.vaf.verdict.toUpperCase()}</span>
+      </div>`:''}
+      ${c.fundamental_score!=null?`<div class="chips" style="margin:0 0 10px">
+        <span class="chip" style="border-color:var(--liq)">F-SCORE <b style="color:${scoreColor(c.fundamental_score)}">${c.fundamental_score}</b></span>
+        ${c.fundamental_detail?.value_accrual_ratio!=null?`<span class="chip ${c.fundamental_detail.value_accrual_ratio>=0.5?'p':'n'}">VALUE ACCRUAL <b>${Math.round(c.fundamental_detail.value_accrual_ratio*100)}%</b></span>`:''}
+        ${c.fundamental_detail?.price_to_fees!=null?`<span class="chip">P/F <b>${c.fundamental_detail.price_to_fees}×</b></span>`:''}
+        ${c.composite_score!=null?`<span class="chip">COMPOSITE <b style="color:${scoreColor(c.composite_score)}">${c.composite_score}</b></span>`:''}
+      </div>`:''}
+      <div class="rows">
+        <div><span class="k">RSI-14</span><span class="${c.rsi==null?'neu':c.rsi>=70||c.rsi<=30?'wn':'neu'}">${c.rsi??'n/a'}</span></div>
+        <div><span class="k">vs BTC 3/7d</span><span class="${cls(c.btc_ratio_trend,1e-4,-1e-4)}">${c.btc_ratio_trend!=null?(c.btc_ratio_trend>0?'+':'')+c.btc_ratio_trend.toFixed(5):'n/a'}</span></div>
+        <div><span class="k">30d</span><span class="${cls(chg30,0,0)}">${chg30!=null?pct(chg30):'n/a'}</span></div>
+        <div><span class="k">Momentum</span><span class="${cls(c.momentum,1e-4,-1e-4)}">${c.momentum!=null?(c.momentum>0?'+':'')+c.momentum.toFixed(5):'n/a'}</span></div>
+        <div><span class="k">Volatility</span><span class="neu">${c.volatility!=null?(c.volatility*100).toFixed(2)+'%':'n/a'}</span></div>
+        <div><span class="k">Ret 24h</span><span class="${cls(c.return,0,0)}">${c.return!=null?pct(c.return):'n/a'}</span></div>
+      </div>
+      <div class="vol">
+        <div class="vh"><span class="k">${c.data_source==='coinstats'?'Volume · history n/a on fallback source':'Volume · 14d (closed candles)'}</span><span class="amt">${c.vol_24h_usd!=null?fmtUsd(c.vol_24h_usd):'n/a'}</span></div>
+        ${volbars(vols)}
+        <div class="vrow">
+          <div class="vtape"><i style="width:${tapeW}%"></i><s></s></div>
+          <span class="vratio ${vr==null?'':vr>=2?'pos':vr<=0.5?'neg':'neu'}">${vr!=null?vr.toFixed(2)+'×':'n/a'}</span>
+        </div>
+        <div class="vmeta">
+          <span>7d avg ${c.vol_avg_7d_usd!=null?fmtUsd(c.vol_avg_7d_usd):'n/a'}</span>
+          <span>trend ${c.vol_trend!=null?c.vol_trend.toFixed(2):'n/a'} ${c.vol_trend!=null?(c.vol_trend>1.1?'▲ building':c.vol_trend<0.9?'▼ fading':'— steady'):''}</span>
+        </div>
+      </div>`;
+    box.appendChild(el);
+  }
+}
+
+let LAST=null;
+async function load(){
+  try{
+    const r=await fetch('data.json?t='+Date.now());
+    if(!r.ok)throw 0;
+    LAST=await r.json();
+    render(LAST);
+    $('empty').hidden=true;
+  }catch(e){
+    $('meta').textContent='no data';
+    $('empty').hidden=false;
+  }
+}
+$('sort').addEventListener('change',()=>LAST&&render(LAST));
+$('filter').addEventListener('input',()=>LAST&&render(LAST));
+$('grp').addEventListener('change',()=>LAST&&render(LAST));
+load();
+setInterval(load,60000);
+</script>
+</body>
+</html>

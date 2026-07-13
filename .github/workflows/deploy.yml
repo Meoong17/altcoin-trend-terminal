@@ -1,0 +1,75 @@
+name: Collect & Deploy (GitHub Pages + optional Cloudflare Pages)
+
+on:
+  schedule:
+    - cron: "15 */6 * * *"   # every 6h (matches repo-stress cache TTL; GLF TTL is 12h)
+  workflow_dispatch:          # manual trigger from the Actions tab
+  push:
+    branches: [main]
+
+permissions:
+  contents: write   # needed to commit history.db back (runners are stateless)
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  collect-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run collector
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          COINSTATS_API_KEY: ${{ secrets.COINSTATS_API_KEY }}
+          GROUP: "l1,defi"  # both curated universes in one dashboard
+          # TOP_N: "15"    # optionally cap to N largest by 24h volume
+        run: python3 collect.py
+
+      - name: Persist history.db
+        # Actions runners are stateless — without this commit, the
+        # point-in-time training history resets every run.
+        run: |
+          git config user.name "collector-bot"
+          git config user.email "actions@github.com"
+          git add history.db
+          git diff --cached --quiet || git commit -m "history: $(date -u +%F) snapshot"
+          git push
+
+      - name: Assemble site
+        run: |
+          mkdir -p dist
+          cp index.html data.json dist/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+      # ── Optional: Cloudflare Pages ──
+      # Runs only when CLOUDFLARE_API_TOKEN is configured. Same dist/
+      # artifact, so GH Pages and CF Pages stay byte-identical mirrors.
+      - name: Deploy to Cloudflare Pages
+        if: ${{ env.CF_TOKEN != '' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler@3 pages deploy dist --project-name=altcoin-trend-terminal --commit-dirty=true

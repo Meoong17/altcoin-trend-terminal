@@ -1,0 +1,12 @@
+{
+  "AAVEUSDT": {
+    "pq": {"moat": 10, "product_market_fit": 8, "execution_risk": 5},
+    "nf": {"token_demand_link": 8, "supply_cleanliness": 4},
+    "rg": {"value_capture_expansion": 9, "catalyst_strength": 5, "repricing_friction": 4},
+    "otf": {"catalyst_timing": 6, "supply_timing": 6},
+    "vfr": {"dilution_30d_usd": 4200000, "quality": "Proxy"},
+    "flags": {"unlock_within_3m": false, "fee_switch_only": false, "chart_breakdown": false},
+    "confidence": "B",
+    "notes": "ve-lock fee share live; buyback program recurring"
+  }
+}
