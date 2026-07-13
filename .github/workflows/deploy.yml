@@ -39,6 +39,7 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           COINSTATS_API_KEY: ${{ secrets.COINSTATS_API_KEY }}
           GROUP: "l1,defi"  # both curated universes in one dashboard
+          BINANCE_BASE: "https://data-api.binance.vision"
           # TOP_N: "15"    # optionally cap to N largest by 24h volume
         run: python3 collect.py
 
