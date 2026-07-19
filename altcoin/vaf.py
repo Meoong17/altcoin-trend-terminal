@@ -304,10 +304,9 @@ def compute_vfr(raw, override_vfr):
                 "quality": quality, "read": "confirming"}
     ratio = hrev / dil
     if ratio <= 0:
-        return {"display": "Weak / no capture", "quality": quality,
-                "read": "no token-positive value measured against known dilution",
-                "numerator_30d": hrev, "dilution_30d": dil}
-    disp = f"{'+' if ratio >= 1 else '-'}{(ratio if ratio >= 1 else 1/ratio):.1f}x"
+        disp = "0.0x"
+    else:
+        disp = f"{'+' if ratio >= 1 else '-'}{(ratio if ratio >= 1 else 1/ratio):.1f}x"
     read = ("confirming" if ratio >= 1.5 else "mildly confirming" if ratio >= 1.0
             else "mildly contradicting" if ratio >= 1/1.5 else "contradicting")
     return {"display": disp, "quality": quality, "read": read,
