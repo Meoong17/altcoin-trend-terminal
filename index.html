@@ -56,7 +56,7 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 #howto-btn:focus-visible{outline:2px solid var(--liq);outline-offset:2px}
 
 /* ── macro strip ── */
-#macro{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:20px 0 12px}
+#macro{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0 12px}
 .mbox{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
   border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}
 .lbl{color:var(--muted);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase}
@@ -78,6 +78,10 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 #regime-state{font-family:var(--disp);font-weight:700;font-size:14.5px;letter-spacing:.05em}
 #degraded{display:none;grid-column:1/-1;border:1px solid var(--warn);border-radius:var(--r);
   padding:9px 14px;color:var(--warn);font-size:11px;background:rgba(232,180,79,.06)}
+#concwarn{display:none;grid-column:1/-1;border:1px solid var(--liq);border-radius:var(--r);
+  padding:9px 14px;color:var(--liq);font-size:11px;background:rgba(83,200,236,.06)}
+.speedtag{font-size:8px;letter-spacing:.08em;padding:1.5px 6px;border-radius:3px;border:1px solid var(--line);
+  color:var(--dim);vertical-align:1px;margin-left:5px}
 
 /* ── controls ── */
 #ctrl{display:flex;align-items:center;gap:10px;margin:6px 0 16px;flex-wrap:wrap}
@@ -178,7 +182,7 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:var(--dim);font-size:10px;
   display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
 
-@media(max-width:860px){#macro{grid-template-columns:1fr 1fr}#macro .mbox:nth-child(3){grid-column:1/-1}}
+@media(max-width:980px){#macro{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){
   #macro{grid-template-columns:1fr}
   .rows{grid-template-columns:repeat(2,1fr)}
@@ -186,6 +190,67 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
   #hd-season{display:none!important}
   [data-tip]::after{width:190px}
 }
+
+/* ── quick stats bar ── */
+#stats{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.stat{flex:1;min-width:130px;background:linear-gradient(180deg,var(--panel),var(--panel2));
+  border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 12px;box-shadow:var(--shadow)}
+.stat .sv{font-family:var(--disp);font-size:17px;font-weight:700}
+.stat .sk2{color:var(--muted);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;display:block}
+
+/* ── view toggle ── */
+#viewtg{display:flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+#viewtg button{background:var(--panel);border:none;color:var(--muted);font-family:var(--mono);
+  font-size:10.5px;letter-spacing:.08em;padding:6px 12px;cursor:pointer}
+#viewtg button.on{background:rgba(83,200,236,.12);color:var(--liq)}
+
+/* ── table mode ── */
+#tablewrap{display:none;background:linear-gradient(180deg,var(--panel),var(--panel2));
+  border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:auto;max-width:100%}
+table.tt{width:100%;border-collapse:collapse;font-size:11.5px;min-width:840px}
+.tt thead th{position:sticky;top:0;background:#151B28;color:var(--muted);font-weight:500;
+  font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;text-align:right;
+  padding:9px 10px;border-bottom:1px solid var(--line2);white-space:nowrap;cursor:pointer;z-index:5}
+.tt thead th:first-child,.tt thead th:nth-child(2){text-align:left}
+.tt thead th.on{color:var(--liq)}
+.tt tbody td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.tt tbody td:first-child{color:var(--dim);font-size:10px}
+.tt tbody td:nth-child(2){text-align:left}
+.tt tbody tr.mrow{cursor:pointer;transition:background .12s}
+.tt tbody tr.mrow:hover{background:rgba(83,200,236,.05)}
+.tt .tsym{font-family:var(--disp);font-weight:700;font-size:12.5px}
+.tt .tsym small{color:var(--dim);font-weight:500;font-size:9px}
+.tbar{display:inline-flex;align-items:center;gap:7px;justify-content:flex-end}
+.tbar .bg{width:52px;height:4px;border-radius:2px;background:var(--panel2);border:1px solid var(--line);overflow:hidden}
+.tbar .bg i{display:block;height:100%}
+.sdot{display:inline-block;width:7px;height:7px;border-radius:50%;vertical-align:1px}
+.cata{font-size:9px;letter-spacing:.02em}
+tr.detail>td{padding:0!important;background:var(--panel2)}
+tr.detail .inner{padding:14px 16px;border-bottom:1px solid var(--line2)}
+#showmore{display:none;margin:14px auto 0;background:var(--panel);border:1px solid var(--line2);
+  color:var(--liq);font-family:var(--mono);font-size:11px;letter-spacing:.08em;border-radius:999px;
+  padding:8px 22px;cursor:pointer}
+#showmore:hover{border-color:var(--liq)}
+@media(max-width:700px){.tt .hidem{display:none}table.tt{min-width:560px}}
+
+/* performance panel: 1D/7D/30D self + vs BTC/ETH, replaces the old
+   confusing raw momentum-of-ratio chip with clean labeled percentages */
+.perf{margin:10px 0 10px;padding:9px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--r-sm)}
+.perf .ph{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between}
+.perf table{width:100%;border-collapse:collapse;font-size:11px}
+.perf th{font-size:8px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;text-align:right;font-weight:500;padding-bottom:3px}
+.perf th:first-child{text-align:left}
+.perf td{text-align:right;padding:2px 0}
+.perf td:first-child{text-align:left;color:var(--muted);font-size:9.5px}
+
+.gradebadge{display:inline-flex;align-items:center;justify-content:center;
+  min-width:30px;padding:2px 7px;border-radius:5px;font-family:var(--disp);
+  font-weight:700;font-size:12px;letter-spacing:.02em;vertical-align:1px}
+.gradebadge.gA1{background:rgba(52,217,139,.16);color:var(--up);border:1px solid rgba(52,217,139,.4)}
+.gradebadge.gA{background:rgba(52,217,139,.10);color:var(--up);border:1px solid rgba(52,217,139,.28)}
+.gradebadge.gB{background:rgba(232,180,79,.12);color:var(--warn);border:1px solid rgba(232,180,79,.35)}
+.gradebadge.gAvoid{background:rgba(242,107,92,.12);color:var(--down);border:1px solid rgba(242,107,92,.35)}
+.gradebadge.gNA{background:var(--panel2);color:var(--dim);border:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -205,7 +270,7 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
 <div class="wrap">
   <div id="macro">
     <div class="mbox">
-      <span class="lbl" data-tip="Global Liquidity Factor 0–100: composite of central-bank balance sheets (Fed, ECB, BoJ, China M2), US M2, TGA, RRP and DXY, each as a z-score. Above 60 = liquidity tailwind for risk assets.">Global Liquidity Factor</span>
+      <span class="lbl">SLOW SIGNAL<span class="speedtag">30-90D</span></span><br><span class="lbl" data-tip="Global Liquidity Factor 0–100: composite of central-bank balance sheets (Fed, ECB, BoJ, China M2), US M2, TGA, RRP and DXY, each as a z-score. Above 60 = liquidity tailwind for risk assets.">Global Liquidity Factor</span>
       <div class="vrow2"><div class="val" id="glf">—</div><span class="tag" id="glf-regime"></span></div>
       <div class="band"><i id="glf-pin" style="left:50%"></i></div>
       <div class="chips" id="glf-chips"></div>
@@ -222,19 +287,32 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
       <div class="band season"><i id="asi-pin" style="left:50%"></i></div>
       <div class="chips"><span class="chip" id="asi-sample"></span></div>
     </div>
+    <div class="mbox">
+      <span class="lbl" data-tip="Total stablecoin float (DeFiLlama, all chains): 30d growth 65% + 7d impulse 35%. Rising float = dry powder entering crypto. Net-flow & exchange-reserve legs need paid data and are excluded, never faked.">Stablecoin Liquidity</span>
+      <div class="vrow2"><div class="val" id="stbl">—</div><span class="tag" id="stbl-tag"></span></div>
+      <div class="band"><i id="stbl-pin" style="left:50%"></i></div>
+      <div class="chips" id="stbl-chips"></div>
+    </div>
     <div id="regime" class="mbox">
       <span class="lbl" data-tip="Deterministic market state from BTC 30d return, BTC realized-vol percentile, liquidity and repo stress. Rules ordered by severity: capitulation > risk-off > bear > bull > sideways.">Market Regime</span>
       <span id="regime-state"></span>
       <span class="tag" id="regime-why"></span>
     </div>
     <div id="degraded"></div>
+    <div id="concwarn"></div>
   </div>
+
+  <div id="stats"></div>
 
   <div id="ctrl">
     <span id="count" class="cl"></span>
     <span id="universe" class="cl"></span>
     <select id="grp" style="display:none"><option value="">all groups</option></select>
     <input id="filter" type="text" placeholder="filter symbol…" autocomplete="off" aria-label="Filter symbols">
+    <div id="viewtg" role="group" aria-label="View">
+      <button id="vt-table" type="button">TABLE</button>
+      <button id="vt-cards" type="button">CARDS</button>
+    </div>
     <label class="cl" for="sort">sort</label>
     <select id="sort">
       <option value="trend_score">trend score</option>
@@ -245,10 +323,13 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
       <option value="fundamental_score">fundamental</option>
       <option value="composite_score">composite (T+F)</option>
       <option value="vaf_total">VaF</option>
+      <option value="entry_grade">entry timing</option>
     </select>
   </div>
 
   <div id="coins" aria-live="polite"></div>
+  <div id="tablewrap"><table class="tt"><thead></thead><tbody></tbody></table></div>
+  <button id="showmore" type="button">SHOW 100 MORE</button>
   <div id="empty" hidden>data.json not found — the collector hasn't produced data yet.</div>
 
   <footer>
@@ -278,6 +359,10 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
     <h3>Volume block</h3>
     <p>14 daily bars of quote volume (closed candles only — the running day is excluded so mornings don't fake a dry-up). The tape below compares the last closed day to the 7-day average: <b>&gt;2.0×</b> is a spike (breakout, news, capitulation), <b>&lt;0.5×</b> means participation is drying up. "Building / fading" is the 3d vs 7d run-rate.</p>
 
+    <h3>Entry Timing grade (A+ / A / B / Avoid)</h3>
+    <p>A simplified letter grade for "<b>is now a reasonable time to look at this coin</b>" — derived from OTF (Opportunity &amp; Timing), computed for <b>every</b> coin in the universe, not just DeFi/VaF ones. It answers a different question than trend score: trend score asks "is this trending," Entry Timing asks "is the setup actionable right now" (chart structure, strength vs BTC, position in its 30-day range).</p>
+    <p>Grade bands mirror VaF's own locked OTF tiers: <b>A+</b> ≥41 (strong opportunity) · <b>A</b> ≥35 (good) · <b>B</b> ≥28 (watchlist/incomplete) · <b>Avoid</b> below that. Coverage shown alongside the badge tells you how many of the underlying metrics fed the grade — coins with a full VaF row can also have catalyst/supply timing filled in manually for a fuller picture. This grade is completely separate from trend score and VaF: it never changes either one, and neither changes it.</p>
+
     <h3 class="v">VaF row (DeFi &amp; infra coins)</h3>
     <p>The Direct Value Accrual Framework scores whether the <b>token</b> — not just the protocol — captures value. <b>PQ</b> /50 protocol quality, <b>NF</b> /50 structural value capture (buybacks, burns, fee share measured from DeFiLlama holders-revenue), <b>RG</b> /50 repricing gap. <b>VaF = PQ+NF+RG</b>, out of 150; 105+ is strong, 120+ elite.</p>
     <p><b>OTF</b> /50 scores timing only and never changes VaF. <b>VFR</b> is the 30-day confirmation ratio: token-positive value ÷ dilution — <b>N/A</b> means dilution data hasn't been manually verified, never a guess. <b>CONF</b> A–D grades research reliability; machine-only rows cap at B and low data coverage degrades it.</p>
@@ -302,7 +387,7 @@ const pct=v=>(v>0?'+':'')+(v*100).toFixed(2)+'%';
 const cls=(v,hi,lo)=>v==null?'neu':v>=hi?'pos':v<=lo?'neg':'neu';
 const scoreColor=s=>s>=60?'var(--up)':s>=40?'var(--warn)':'var(--down)';
 const GLF_NAMES={fed:'FED',ecb:'ECB',jpn:'BOJ',china:'CN M2',m2:'US M2',dxy:'DXY',tga:'TGA',rrp:'RRP'};
-const compZ=v=>Array.isArray(v)?v[0]:(typeof v==='object'&&v!==null?v.z_score??v.z??v.value??null:v);
+const compZ=v=>Array.isArray(v)?v[0]:(typeof v==='object'&&v!==null?v.z??v.value:v);
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* count-up animation for hero numbers */
@@ -345,7 +430,117 @@ function skeletons(n=6){
     <div class="sk sk-line" style="width:80%"></div><div class="sk sk-block"></div></div>`).join('');
 }
 
-let LAST=null,LAST_GEN=null;
+function vafDrivers(vaf){
+  if(!vaf||!vaf.pillars)return'';
+  const labels={pq:'PQ',nf:'NF',rg:'RG',otf:'OTF'};
+  const parts=['pq','nf','rg','otf'].map(k=>{
+    const ds=vaf.pillars[k]?.drivers;
+    if(!ds||!ds.length)return null;
+    const top=ds[0];
+    const sign=top.contribution>=0?'+':'';
+    return `${labels[k]}\u2192${top.metric.replace(/_/g,' ')} <b class="${top.contribution>=0?'pos':'neg'}">${sign}${top.contribution}</b>`;
+  }).filter(Boolean);
+  if(!parts.length)return'';
+  return `<div style="font-size:9.5px;color:var(--muted);margin:-3px 0 8px" data-tip="Strongest metric behind each VaF pillar's number \u2014 exact contribution (not approximated), same math as the trend-score driver breakdown.">↳ top drivers: ${parts.join(' &middot; ')}</div>`;
+}
+function newsChips(c){
+  const n=c.news; if(!n)return'';
+  const s=n.sentiment, col=s==null?'var(--dim)':s>15?'var(--up)':s<-15?'var(--down)':'var(--warn)';
+  const cat=[...(n.catalysts_pos||[]).map(x=>`<span class="chip p">${x} <b>▲</b></span>`),
+             ...(n.catalysts_neg||[]).map(x=>`<span class="chip n">${x} <b>▼</b></span>`)].join('');
+  return`<div class="chips" style="margin:0 0 8px">
+    <span class="chip" data-tip="Community vote sentiment from CryptoPanic posts (24h recency-weighted, -100..+100). Display-only — never feeds the scores."><span class="sdot" style="background:${col}"></span> SENT <b>${s>0?'+':''}${s}</b></span>
+    <span class="chip">NEWS 24H <b>${n.news_24h}</b></span>${cat}
+  </div>${n.top?`<div style="font-size:10px;color:var(--muted);margin:-4px 0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">↳ <a href="${n.top.url}" target="_blank" rel="noopener" style="color:var(--muted)">${n.top.title}</a></div>`:''}`;
+}
+function pctOrDash(v){ return v==null ? '—' : (v>0?'+':'')+(v*100).toFixed(2)+'%'; }
+function perfPanel(c){
+  const p=c.performance; if(!p)return'';
+  const rows=[['1D','ret_1d','vs_btc_1d','vs_eth_1d'],['7D','ret_7d','vs_btc_7d','vs_eth_7d'],
+              ['30D','ret_30d','vs_btc_30d','vs_eth_30d']];
+  const anyData=rows.some(([,k])=>p[k]!=null);
+  if(!anyData)return'';
+  return `<div class="perf">
+    <div class="ph"><span data-tip="Exact period-close returns — replaces the old ratio-momentum figure that looked like a raw decimal instead of a percentage.">PERFORMANCE</span><span>own return · excess vs BTC · excess vs ETH</span></div>
+    <table><thead><tr><th></th><th>Coin</th><th>vs BTC</th><th>vs ETH</th></tr></thead><tbody>
+    ${rows.map(([label,k,kb,ke])=>`<tr><td>${label}</td>
+      <td class="${cls(p[k],0,0)}">${pctOrDash(p[k])}</td>
+      <td class="${cls(p[kb],0,0)}">${pctOrDash(p[kb])}</td>
+      <td class="${cls(p[ke],0,0)}">${pctOrDash(p[ke])}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+function gradeClass(g){
+  return g==='A+'?'gA1':g==='A'?'gA':g==='B'?'gB':g==='Avoid'?'gAvoid':'gNA';
+}
+function gradeBadge(et,tip){
+  if(!et||et.grade==null)return'';
+  return `<span class="gradebadge ${gradeClass(et.grade)}" data-tip="${tip}">${et.grade}</span>`;
+}
+function cardBody(sym,c){
+  const ts=c.trend_score, closes=c.closes_30d, vols=c.volumes_30d;
+  const chg30=closes&&closes.length>1?(closes[closes.length-1]/closes[0]-1):null;
+  const chg24=closes&&closes.length>2?(closes[closes.length-1]/closes[closes.length-2]-1):null;
+  const vr=c.vol_ratio, tapeW=vr!=null?Math.min(100,vr/2*100):0;
+  const srcBadge=c.data_source==='coinstats'?' <span class="chip n" style="vertical-align:2px">CS FALLBACK</span>'
+    :c.data_source==='bybit'?' <span class="chip" style="vertical-align:2px;border-color:var(--warn);color:var(--warn)">BYBIT</span>':'';
+  const drivers=(c.trend_score_detail?.drivers||[]).slice(0,3);
+  const vaf=c.vaf;
+  return `      <div class="head">
+        <span class="sym">${sym.replace('USDT','')}<small>/USDT${c.groups?' · '+c.groups.map(g=>g.toUpperCase()).join(','):''}</small>${srcBadge}</span>
+        <span class="px"><b>${fmtPx(c.latest_price)}</b>
+          <span class="${cls(chg24,0,0)}">${chg24!=null?pct(chg24)+' 24h':''}</span></span>
+      </div>
+      <div class="scorerow">
+        <b style="color:${ts!=null?scoreColor(ts):'var(--muted)'}">${ts!=null?ts.toFixed(1):'n/a'}</b>
+        <span class="sl">FAST<span class="speedtag" style="margin-left:3px">1-7D</span><br></span><span class="sl" data-tip="Weighted technical composite: breakout 30%, strength vs BTC 30%, trend consistency 20%, compression 10%, macro 10%. Chips below show each component's push above/below neutral.">trend<br>score</span>
+        ${gradeBadge(c.entry_timing,`Entry Timing grade from OTF (Opportunity &amp; Timing): market structure, relative strength vs BTC, execution quality`+(c.entry_timing?.coverage!=null?` — coverage ${Math.round(c.entry_timing.coverage*100)}%`:'')+`. A+ ≥41 · A ≥35 · B ≥28 · else Avoid. Separate from VaF/trend score — timing only, never changes them.`)}
+        ${sparkline(closes)}
+      </div>
+      <div class="sbar"><i style="width:${ts||0}%;background:${ts!=null?scoreColor(ts):'transparent'}"></i></div>
+      ${drivers.length?`<div class="chips" style="margin:-2px 0 8px">`+drivers.map(dr=>`<span class="chip ${dr.contribution>=0?'p':'n'}">${dr.component.replace('_',' ')} <b>${dr.contribution>0?'+':''}${dr.contribution}</b></span>`).join('')+
+        (c.trend_score_detail?.coverage?`<span class="chip" data-tip="How many of the 5 possible technical components fed this score. Two coins with the same numeric score aren't directly comparable if their coverage differs.">COVERAGE <b>${c.trend_score_detail.coverage.used}/${c.trend_score_detail.coverage.total}</b></span>`:'')+
+        `</div>`:''}
+      ${c.trend_score_detail?.comparability_note?`<div style="font-size:9.5px;color:var(--warn);margin:-4px 0 8px">⚠ ${c.trend_score_detail.comparability_note}</div>`:''}
+      ${vaf?`<div class="chips vafchips" style="margin:0 0 7px">
+        <span class="chip" data-tip="Direct Value Accrual Framework: PQ (protocol quality) + NF (structural token value capture) + RG (repricing gap), each /50. 105+ strong, 120+ elite. Open HOW TO READ for the full method.">VaF <b>${vaf.vaf??'—'}/150</b></span>
+        <span class="chip">PQ <b>${vaf.pq??'—'}</b></span><span class="chip">NF <b>${vaf.nf??'—'}</b></span><span class="chip">RG <b>${vaf.rg??'—'}</b></span>
+        <span class="chip" data-tip="Opportunity & Timing /50 — chart structure, relative strength, catalyst & supply timing. Separate from VaF: strong asset ≠ good entry.">OTF <b>${vaf.otf??'—'}</b></span>
+        <span class="chip" data-tip="Value Flow Ratio: 30d token-positive value ÷ 30d dilution. N/A = dilution not manually verified yet — never guessed.">VFR <b>${vaf.vfr?.display??'N/A'}</b></span>
+        <span class="chip" data-tip="Research confidence A–D from data coverage. Machine-only scoring caps at B; manual research in vaf_overrides.json raises coverage.">CONF <b>${vaf.confidence}</b></span>
+        <span class="chip ${/Accumulation|Candidate$/.test(vaf.verdict)?'p':/Avoid|Broken/.test(vaf.verdict)?'n':''}" style="border-color:var(--vaf)">${vaf.verdict.toUpperCase()}</span>
+      </div>`:''}
+      ${vafDrivers(vaf)}
+      ${newsChips(c)}
+      ${c.fundamental_score!=null?`<div class="chips" style="margin:0 0 8px">
+        <span class="chip" style="border-color:var(--liq)" data-tip="Fundamental composite from DeFiLlama: TVL growth, revenue yield on mcap, fee acceleration, value-accrual share.">F-SCORE <b style="color:${scoreColor(c.fundamental_score)}">${c.fundamental_score}</b></span>
+        ${c.fundamental_detail?.value_accrual_ratio!=null?`<span class="chip ${c.fundamental_detail.value_accrual_ratio>=0.5?'p':'n'}" data-tip="Share of protocol revenue that actually reaches token holders (buybacks, burns, fee share) over 30d — measured, not narrated.">VALUE ACCRUAL <b>${Math.round(c.fundamental_detail.value_accrual_ratio*100)}%</b></span>`:''}
+        ${c.fundamental_detail?.price_to_fees!=null?`<span class="chip" data-tip="Market cap ÷ annualized protocol fees — the crypto P/E analog. Lower = cheaper per dollar of fees.">P/F <b>${c.fundamental_detail.price_to_fees}×</b></span>`:''}
+        ${c.composite_score!=null?`<span class="chip" data-tip="60% technical + 40% fundamental. Fundamentals select, technicals time.">COMPOSITE <b style="color:${scoreColor(c.composite_score)}">${c.composite_score}</b></span>`:''}
+      </div>`:''}
+      <div class="rows">
+        <div><span class="k" data-tip="14-day RSI (simple average). 55–68 is the momentum sweet spot rewarded by the breakout component; 70+ overbought, 30− oversold.">RSI-14</span><span class="${c.rsi==null?'neu':c.rsi>=70||c.rsi<=30?'wn':'neu'}">${c.rsi??'n/a'}</span></div>
+        <div><span class="k" data-tip="Coming up next: a labeled 1D/7D/30D performance table vs BTC and ETH.">Trend</span><span class="neu">see below</span></div>
+        <div><span class="k" data-tip="Price change over the last 30 daily closes.">30d</span><span class="${cls(chg30,0,0)}">${chg30!=null?pct(chg30):'n/a'}</span></div>
+        <div><span class="k" data-tip="Return acceleration: 3-day average daily return minus 7-day average. Positive = trend speeding up.">Momentum</span><span class="${cls(c.momentum,1e-4,-1e-4)}">${c.momentum!=null?(c.momentum>0?'+':'')+c.momentum.toFixed(5):'n/a'}</span></div>
+        <div><span class="k" data-tip="Standard deviation of daily returns (30d window).">Volatility</span><span class="neu">${c.volatility!=null?(c.volatility*100).toFixed(2)+'%':'n/a'}</span></div>
+        <div><span class="k" data-tip="Latest daily return (last closed candle vs prior).">Ret 24h</span><span class="${cls(c.return,0,0)}">${c.return!=null?pct(c.return):'n/a'}</span></div>
+      </div>
+      ${perfPanel(c)}
+      <div class="vol">
+        <div class="vh"><span class="k" data-tip="Daily quote volume in USDT, closed candles only — today's partial candle is excluded so mornings don't fake a volume collapse.">${c.data_source==='coinstats'?'Volume · history n/a on fallback source':'Volume · 14d (closed candles)'}</span><span class="amt">${c.vol_24h_usd!=null?fmtUsd(c.vol_24h_usd):'n/a'}</span></div>
+        ${volbars(vols)}
+        <div class="vrow">
+          <div class="vtape"><i style="width:${tapeW}%"></i><s></s></div>
+          <span class="vratio ${vr==null?'':vr>=2?'pos':vr<=0.5?'neg':'neu'}" data-tip="Last closed day ÷ 7-day average. Marker sits at 1.0×; a full bar is 2.0×+ — a genuine participation spike.">${vr!=null?vr.toFixed(2)+'×':'n/a'}</span>
+        </div>
+        <div class="vmeta">
+          <span>7d avg ${c.vol_avg_7d_usd!=null?fmtUsd(c.vol_avg_7d_usd):'n/a'}</span>
+          <span>trend ${c.vol_trend!=null?c.vol_trend.toFixed(2):'n/a'} ${c.vol_trend!=null?(c.vol_trend>1.1?'▲ building':c.vol_trend<0.9?'▼ fading':'— steady'):''}</span>
+        </div>
+      </div>`;
+}
+
+let LAST=null,LAST_GEN=null,VIEW='table',SHOWN=100;
 
 function render(d,force){
   // skip full re-render when payload + controls unchanged (refresh tick)
@@ -389,6 +584,28 @@ function render(d,force){
     $('hd-season').innerHTML=`ASI <b style="color:${asi.index>=75?'var(--liq)':asi.index<=25?'var(--btc)':'var(--text)'}">${asi.index}</b> · ${asi.label}`;
   }else{$('asi').textContent='n/a';$('asi-label').textContent='needs 90d history';}
 
+  // ── stablecoin liquidity ──
+  const st=d.macro?.stablecoin_liquidity, sd=d.macro?.stablecoin_detail||{};
+  countUp($('stbl'),st);
+  $('stbl').style.color=st!=null?scoreColor(st):'var(--muted)';
+  $('stbl-tag').textContent=sd.growth_30d!=null?(sd.growth_30d>0?'EXPANDING':'CONTRACTING'):(sd.status||'');
+  if(st!=null)$('stbl-pin').style.left=Math.max(0,Math.min(100,st))+'%';
+  $('stbl-chips').innerHTML=[
+    sd.total_usd!=null?`<span class="chip">FLOAT <b>${fmtUsd(sd.total_usd)}</b></span>`:'',
+    sd.growth_30d!=null?`<span class="chip ${sd.growth_30d>=0?'p':'n'}">30D <b>${(sd.growth_30d*100).toFixed(2)}%</b></span>`:'',
+    sd.growth_7d!=null?`<span class="chip ${sd.growth_7d>=0?'p':'n'}">7D <b>${(sd.growth_7d*100).toFixed(2)}%</b></span>`:''].join('');
+
+  // BTC.D chips inside the alt-season box
+  const mk=d.market||{};
+  if(mk.btc_dominance!=null){
+    $('asi-sample').insertAdjacentHTML?.('afterend','');
+    document.querySelector('#macro .mbox:nth-child(3) .chips').innerHTML=
+      `<span class="chip" id="asi-sample">${asi?asi.outperformers+'/'+asi.sample+' beat BTC · 90d':''}</span>`+
+      `<span class="chip">BTC.D <b>${mk.btc_dominance}%</b></span>`+
+      (mk.btc_dominance_d7!=null?`<span class="chip ${mk.btc_dominance_d7<=0?'p':'n'}">Δ7D <b>${mk.btc_dominance_d7>0?'+':''}${mk.btc_dominance_d7}</b></span>`
+        :`<span class="chip">Δ7D <b>needs ${Math.max(0,8-(mk.history_days||0))}d more history</b></span>`);
+  }
+
   // ── regime ──
   const rg=d.regime;
   if(rg&&rg.state&&rg.state!=='UNKNOWN'){
@@ -397,7 +614,20 @@ function render(d,force){
     st.style.color=rg.state==='BULL_TREND'?'var(--up)':rg.state==='SIDEWAYS'?'var(--text)':
       rg.state==='RISK_OFF'||rg.state==='BEAR_TREND'?'var(--down)':'var(--warn)';
     $('regime-why').textContent=(rg.reasons||[]).join(' · ');
+    st2=rg.held?` <span class="chip" style="border-color:var(--warn);color:var(--warn)">HELD · pending ${rg.pending.replace(/_/g,' ')}</span>`:'';
+    $('regime-state').insertAdjacentHTML('afterend',st2&&!document.getElementById('heldchip')?st2.replace('<span','<span id="heldchip"'):'');
+    if(!rg.held)document.getElementById('heldchip')?.remove();
   }else{$('regime').style.display='none';}
+
+  // ── concentration warning (portfolio correlation, review fix #3) ──
+  const cw=d.concentration_warning;
+  const cwEl=$('concwarn');
+  if(cw&&cw.flag){
+    cwEl.style.display='block';
+    cwEl.innerHTML=`⚠ CONCENTRATION RISK: top-10 by trend score average <b>${(cw.avg_corr*100).toFixed(0)}%</b> pairwise correlation over 30d`+
+      (cw.high_pairs&&cw.high_pairs.length?` — e.g. ${cw.high_pairs.slice(0,3).map(([a,b,r])=>`${a.replace('USDT','')}/${b.replace('USDT','')} (${(r*100).toFixed(0)}%)`).join(', ')}`:'')+
+      `. High scores across correlated coins isn't diversification — it may be one bet wearing several tickers.`;
+  }else{cwEl.style.display='none';}
 
   // ── degraded banner ──
   const nComp=gd.active_components, warn=[];
@@ -414,6 +644,7 @@ function render(d,force){
   const getv=c=>{
     if(key==='chg24'){const cl=c.closes_30d;return cl&&cl.length>2?cl[cl.length-1]/cl[cl.length-2]-1:null;}
     if(key==='vaf_total')return c.vaf?.vaf??null;
+    if(key==='entry_grade'){const r={'A+':4,'A':3,'B':2,'Avoid':1};return r[c.entry_timing?.grade]??null;}
     return c[key];
   };
   let entries=Object.entries(d.coins||{});
@@ -423,7 +654,8 @@ function render(d,force){
   if(allGroups.length>1){
     if(grpSel.options.length!==allGroups.length+1){
       const keep=grpSel.value;
-      grpSel.innerHTML='<option value="">all groups</option>'+allGroups.map(g=>`<option value="${g}">${g.toUpperCase()}</option>`).join('');
+      const gcount={};Object.values(d.coins||{}).forEach(c=>(c.groups||[]).forEach(g=>gcount[g]=(gcount[g]||0)+1));
+      grpSel.innerHTML='<option value="">all groups</option>'+allGroups.map(g=>`<option value="${g}">${g.toUpperCase()} (${gcount[g]||0})</option>`).join('');
       grpSel.value=keep;
     }
     grpSel.style.display='inline-block';
@@ -439,71 +671,76 @@ function render(d,force){
   $('count').textContent=entries.length+(q||gq?' / '+total:'')+' coins';
   $('universe').textContent=d.universe?.mode&&d.universe.mode!=='default'?'· '+d.universe.mode.toUpperCase():'';
 
-  box.innerHTML='';
-  let i=0;
-  for(const[sym,c]of entries){
-    const el=document.createElement('div');
-    el.className='card enter'; el.style.animationDelay=Math.min(i++,10)*30+'ms';
-    if(c.status!=='ok'){
-      el.innerHTML=`<div class="head"><span class="sym">${sym}</span></div><div class="unavail">data unavailable this cycle</div>`;
-      box.appendChild(el); continue;
+  // ── quick stats over the filtered set ──
+  const okRows=entries.filter(([,c])=>c.status==='ok').map(([,c])=>c);
+  const scores=okRows.map(c=>c.trend_score).filter(v=>v!=null).sort((a,b)=>a-b);
+  const med=scores.length?scores[Math.floor(scores.length/2)].toFixed(0):'—';
+  const above=okRows.filter(c=>c.trend_score>=60).length;
+  const spikes=okRows.filter(c=>c.vol_ratio!=null&&c.vol_ratio>=2).length;
+  const catal=okRows.filter(c=>c.news&&((c.news.catalysts_pos||[]).length||(c.news.catalysts_neg||[]).length)).length;
+  $('stats').innerHTML=`
+    <div class="stat"><span class="sk2">median trend score</span><span class="sv" style="color:${med!=='—'?scoreColor(+med):'var(--muted)'}">${med}</span></div>
+    <div class="stat"><span class="sk2">coins scoring 60+</span><span class="sv">${above}<small style="color:var(--dim);font-size:11px">/${okRows.length}</small></span></div>
+    <div class="stat"><span class="sk2">volume spikes ≥2×</span><span class="sv" style="color:${spikes?'var(--liq)':'var(--text)'}">${spikes}</span></div>
+    <div class="stat"><span class="sk2">coins with catalysts</span><span class="sv" style="color:${catal?'var(--warn)':'var(--text)'}">${catal}</span></div>`;
+
+  // ── render in the active view ──
+  if(VIEW==='cards'){
+    $('tablewrap').style.display='none';$('showmore').style.display='none';
+    box.style.display='grid';box.innerHTML='';
+    let i=0;
+    for(const[sym,c]of entries.slice(0,SHOWN)){
+      const el=document.createElement('div');
+      el.className='card enter'; el.style.animationDelay=Math.min(i++,10)*30+'ms';
+      el.innerHTML=c.status!=='ok'
+        ?`<div class="head"><span class="sym">${sym}</span></div><div class="unavail">data unavailable this cycle</div>`
+        :cardBody(sym,c);
+      box.appendChild(el);
     }
-    const ts=c.trend_score, closes=c.closes_30d, vols=c.volumes_30d;
-    const chg30=closes&&closes.length>1?(closes[closes.length-1]/closes[0]-1):null;
-    const chg24=closes&&closes.length>2?(closes[closes.length-1]/closes[closes.length-2]-1):null;
-    const vr=c.vol_ratio, tapeW=vr!=null?Math.min(100,vr/2*100):0;
-    const srcBadge=c.data_source==='coinstats'?' <span class="chip n" style="vertical-align:2px">CS FALLBACK</span>'
-      :c.data_source==='bybit'?' <span class="chip" style="vertical-align:2px;border-color:var(--warn);color:var(--warn)">BYBIT</span>':'';
-    const drivers=(c.trend_score_detail?.drivers||[]).slice(0,3);
-    const vaf=c.vaf;
-    el.innerHTML=`
-      <div class="head">
-        <span class="sym">${sym.replace('USDT','')}<small>/USDT${c.groups?' · '+c.groups.map(g=>g.toUpperCase()).join(','):''}</small>${srcBadge}</span>
-        <span class="px"><b>${fmtPx(c.latest_price)}</b>
-          <span class="${cls(chg24,0,0)}">${chg24!=null?pct(chg24)+' 24h':''}</span></span>
-      </div>
-      <div class="scorerow">
-        <b style="color:${ts!=null?scoreColor(ts):'var(--muted)'}">${ts!=null?ts.toFixed(1):'n/a'}</b>
-        <span class="sl" data-tip="Weighted technical composite: breakout 30%, strength vs BTC 30%, trend consistency 20%, compression 10%, macro 10%. Chips below show each component's push above/below neutral.">trend<br>score</span>
-        ${sparkline(closes)}
-      </div>
-      <div class="sbar"><i style="width:${ts||0}%;background:${ts!=null?scoreColor(ts):'transparent'}"></i></div>
-      ${drivers.length?`<div class="chips" style="margin:-2px 0 8px">`+drivers.map(dr=>`<span class="chip ${dr.contribution>=0?'p':'n'}">${dr.component.replace('_',' ')} <b>${dr.contribution>0?'+':''}${dr.contribution}</b></span>`).join('')+`</div>`:''}
-      ${vaf?`<div class="chips vafchips" style="margin:0 0 7px">
-        <span class="chip" data-tip="Direct Value Accrual Framework: PQ (protocol quality) + NF (structural token value capture) + RG (repricing gap), each /50. 105+ strong, 120+ elite. Open HOW TO READ for the full method.">VaF <b>${vaf.vaf??'—'}/150</b></span>
-        <span class="chip">PQ <b>${vaf.pq??'—'}</b></span><span class="chip">NF <b>${vaf.nf??'—'}</b></span><span class="chip">RG <b>${vaf.rg??'—'}</b></span>
-        <span class="chip" data-tip="Opportunity & Timing /50 — chart structure, relative strength, catalyst & supply timing. Separate from VaF: strong asset ≠ good entry.">OTF <b>${vaf.otf??'—'}</b></span>
-        <span class="chip" data-tip="Value Flow Ratio: 30d token-positive value ÷ 30d dilution. N/A = dilution not manually verified yet — never guessed.">VFR <b>${vaf.vfr?.display??'N/A'}</b></span>
-        <span class="chip" data-tip="Research confidence A–D from data coverage. Machine-only scoring caps at B; manual research in vaf_overrides.json raises coverage.">CONF <b>${vaf.confidence}</b></span>
-        <span class="chip ${/Accumulation|Candidate$/.test(vaf.verdict)?'p':/Avoid|Broken/.test(vaf.verdict)?'n':''}" style="border-color:var(--vaf)">${vaf.verdict.toUpperCase()}</span>
-      </div>`:''}
-      ${c.fundamental_score!=null?`<div class="chips" style="margin:0 0 8px">
-        <span class="chip" style="border-color:var(--liq)" data-tip="Fundamental composite from DeFiLlama: TVL growth, revenue yield on mcap, fee acceleration, value-accrual share.">F-SCORE <b style="color:${scoreColor(c.fundamental_score)}">${c.fundamental_score}</b></span>
-        ${c.fundamental_detail?.value_accrual_ratio!=null?`<span class="chip ${c.fundamental_detail.value_accrual_ratio>=0.5?'p':'n'}" data-tip="Share of protocol revenue that actually reaches token holders (buybacks, burns, fee share) over 30d — measured, not narrated.">VALUE ACCRUAL <b>${Math.round(c.fundamental_detail.value_accrual_ratio*100)}%</b></span>`:''}
-        ${c.fundamental_detail?.price_to_fees!=null?`<span class="chip" data-tip="Market cap ÷ annualized protocol fees — the crypto P/E analog. Lower = cheaper per dollar of fees.">P/F <b>${c.fundamental_detail.price_to_fees}×</b></span>`:''}
-        ${c.composite_score!=null?`<span class="chip" data-tip="60% technical + 40% fundamental. Fundamentals select, technicals time.">COMPOSITE <b style="color:${scoreColor(c.composite_score)}">${c.composite_score}</b></span>`:''}
-      </div>`:''}
-      <div class="rows">
-        <div><span class="k" data-tip="14-day RSI (simple average). 55–68 is the momentum sweet spot rewarded by the breakout component; 70+ overbought, 30− oversold.">RSI-14</span><span class="${c.rsi==null?'neu':c.rsi>=70||c.rsi<=30?'wn':'neu'}">${c.rsi??'n/a'}</span></div>
-        <div><span class="k" data-tip="Momentum of the coin/BTC price ratio: 3-day avg return minus 7-day. Positive = gaining vs BTC right now.">vs BTC 3/7d</span><span class="${cls(c.btc_ratio_trend,1e-4,-1e-4)}">${c.btc_ratio_trend!=null?(c.btc_ratio_trend>0?'+':'')+c.btc_ratio_trend.toFixed(5):'n/a'}</span></div>
-        <div><span class="k" data-tip="Price change over the last 30 daily closes.">30d</span><span class="${cls(chg30,0,0)}">${chg30!=null?pct(chg30):'n/a'}</span></div>
-        <div><span class="k" data-tip="Return acceleration: 3-day average daily return minus 7-day average. Positive = trend speeding up.">Momentum</span><span class="${cls(c.momentum,1e-4,-1e-4)}">${c.momentum!=null?(c.momentum>0?'+':'')+c.momentum.toFixed(5):'n/a'}</span></div>
-        <div><span class="k" data-tip="Standard deviation of daily returns (30d window).">Volatility</span><span class="neu">${c.volatility!=null?(c.volatility*100).toFixed(2)+'%':'n/a'}</span></div>
-        <div><span class="k" data-tip="Latest daily return (last closed candle vs prior).">Ret 24h</span><span class="${cls(c.return,0,0)}">${c.return!=null?pct(c.return):'n/a'}</span></div>
-      </div>
-      <div class="vol">
-        <div class="vh"><span class="k" data-tip="Daily quote volume in USDT, closed candles only — today's partial candle is excluded so mornings don't fake a volume collapse.">${c.data_source==='coinstats'?'Volume · history n/a on fallback source':'Volume · 14d (closed candles)'}</span><span class="amt">${c.vol_24h_usd!=null?fmtUsd(c.vol_24h_usd):'n/a'}</span></div>
-        ${volbars(vols)}
-        <div class="vrow">
-          <div class="vtape"><i style="width:${tapeW}%"></i><s></s></div>
-          <span class="vratio ${vr==null?'':vr>=2?'pos':vr<=0.5?'neg':'neu'}" data-tip="Last closed day ÷ 7-day average. Marker sits at 1.0×; a full bar is 2.0×+ — a genuine participation spike.">${vr!=null?vr.toFixed(2)+'×':'n/a'}</span>
-        </div>
-        <div class="vmeta">
-          <span>7d avg ${c.vol_avg_7d_usd!=null?fmtUsd(c.vol_avg_7d_usd):'n/a'}</span>
-          <span>trend ${c.vol_trend!=null?c.vol_trend.toFixed(2):'n/a'} ${c.vol_trend!=null?(c.vol_trend>1.1?'▲ building':c.vol_trend<0.9?'▼ fading':'— steady'):''}</span>
-        </div>
-      </div>`;
-    box.appendChild(el);
+    if(entries.length>SHOWN){$('showmore').style.display='block';
+      $('showmore').textContent=`SHOW ${Math.min(100,entries.length-SHOWN)} MORE (${entries.length-SHOWN} hidden)`;}
+  }else{
+    box.style.display='none';$('tablewrap').style.display='block';
+    const cols=[['#',''],['coin',''],['price',''],['24h','chg24'],['trend','trend_score'],
+      ['rsi','rsi','hidem'],['7d vs btc','','hidem'],['vol 24h','vol_24h_usd','hidem'],
+      ['vol×','vol_ratio'],['entry','entry_grade'],['sent','news'],['sig','']];
+    document.querySelector('.tt thead').innerHTML='<tr>'+cols.map(([l,k,h])=>
+      `<th data-key="${k}" class="${h||''} ${k&&k===$('sort').value?'on':''}">${l.toUpperCase()}</th>`).join('')+'</tr>';
+    const tb=document.querySelector('.tt tbody'); tb.innerHTML='';
+    let rows='';
+    entries.slice(0,SHOWN).forEach(([sym,c],idx)=>{
+      if(c.status!=='ok'){
+        rows+=`<tr class="mrow"><td>${idx+1}</td><td class="tsym">${sym}</td><td colspan="9" style="color:var(--muted);text-align:left">unavailable</td></tr>`;return;
+      }
+      const closes=c.closes_30d;
+      const chg24=closes&&closes.length>2?(closes[closes.length-1]/closes[closes.length-2]-1):null;
+      const ts=c.trend_score, n=c.news;
+      const sent=n&&n.sentiment!=null?n.sentiment:null;
+      const sdot=sent==null?'var(--dim)':sent>15?'var(--up)':sent<-15?'var(--down)':'var(--warn)';
+      const cata=n?[(n.catalysts_pos||[]).map(x=>`<span class="pos">${x}</span>`).join(' '),
+                    (n.catalysts_neg||[]).map(x=>`<span class="neg">${x}</span>`).join(' ')].filter(Boolean).join(' '):'';
+      const badges=[c.vaf?`<span class="chip" style="border-color:var(--vaf)">VaF ${c.vaf.vaf}</span>`:'',
+                    c.fundamental_score!=null&&!c.vaf?`<span class="chip">F ${c.fundamental_score}</span>`:'',
+                    c.data_source==='bybit'?`<span class="chip" style="color:var(--warn)">BB</span>`:'',
+                    c.data_source==='coinstats'?`<span class="chip n">CS</span>`:''].join('');
+      rows+=`<tr class="mrow" data-sym="${sym}">
+        <td>${idx+1}</td>
+        <td><span class="tsym">${sym.replace('USDT','')}<small> ${c.groups?c.groups[0].toUpperCase():''}</small></span></td>
+        <td>${fmtPx(c.latest_price)}</td>
+        <td class="${cls(chg24,0,0)}">${chg24!=null?pct(chg24):'—'}</td>
+        <td><span class="tbar"><span style="color:${ts!=null?scoreColor(ts):'var(--muted)'};font-weight:700">${ts!=null?ts.toFixed(1):'—'}</span>
+          <span class="bg"><i style="width:${ts||0}%;background:${ts!=null?scoreColor(ts):'transparent'}"></i></span></span></td>
+        <td class="hidem ${c.rsi!=null&&(c.rsi>=70||c.rsi<=30)?'wn':''}">${c.rsi??'—'}</td>
+        <td class="hidem ${cls(c.performance?.vs_btc_7d,0,0)}">${pctOrDash(c.performance?.vs_btc_7d)}</td>
+        <td class="hidem">${c.vol_24h_usd!=null?fmtUsd(c.vol_24h_usd):'—'}</td>
+        <td class="${c.vol_ratio==null?'':c.vol_ratio>=2?'pos':c.vol_ratio<=0.5?'neg':''}">${c.vol_ratio!=null?c.vol_ratio.toFixed(2)+'×':'—'}</td>
+        <td><span class="sdot" style="background:${sdot}"></span>${sent!=null?' '+(sent>0?'+':'')+sent:''}<div class="cata">${cata}</div></td>
+        <td style="text-align:left">${badges}</td></tr>`;
+    });
+    tb.innerHTML=rows;
+    if(entries.length>SHOWN){$('showmore').style.display='block';
+      $('showmore').textContent=`SHOW ${Math.min(100,entries.length-SHOWN)} MORE (${entries.length-SHOWN} hidden)`;}
+    else $('showmore').style.display='none';
   }
   LAST_GEN=gen;
 }
@@ -514,14 +751,33 @@ async function load(){
     if(!r.ok)throw 0;
     const d=await r.json();
     LAST=d;
+    if(LAST_GEN===null){VIEW=Object.keys(d.coins||{}).length>40?'table':'cards';syncToggle();}
     if(d.generated_at!==LAST_GEN)render(d);   // no jank on unchanged refresh ticks
     $('empty').hidden=true;
   }catch(e){
     if(!LAST){$('meta').textContent='no data';$('coins').innerHTML='';$('empty').hidden=false;}
   }
 }
-const rerender=()=>{LAST_GEN=null;LAST&&render(LAST);};
+const rerender=()=>{SHOWN=100;LAST_GEN=null;LAST&&render(LAST);};
 $('sort').addEventListener('change',rerender);
+$('vt-table').addEventListener('click',()=>{VIEW='table';syncToggle();rerender();});
+$('vt-cards').addEventListener('click',()=>{VIEW='cards';syncToggle();rerender();});
+function syncToggle(){$('vt-table').classList.toggle('on',VIEW==='table');$('vt-cards').classList.toggle('on',VIEW==='cards');}
+$('showmore').addEventListener('click',()=>{SHOWN+=100;LAST_GEN=null;LAST&&render(LAST);});
+document.querySelector('.tt thead').addEventListener('click',e=>{
+  const k=e.target.closest('th')?.dataset.key;
+  if(k){$('sort').value=k==='news'?$('sort').value:k;if(k!=='news')rerender();}
+});
+document.querySelector('.tt tbody').addEventListener('click',e=>{
+  const tr=e.target.closest('tr.mrow'); if(!tr||!tr.dataset.sym)return;
+  const next=tr.nextElementSibling;
+  if(next&&next.classList.contains('detail')){next.remove();return;}
+  document.querySelectorAll('tr.detail').forEach(x=>x.remove());
+  const c=LAST?.coins?.[tr.dataset.sym]; if(!c||c.status!=='ok')return;
+  const d=document.createElement('tr'); d.className='detail';
+  d.innerHTML=`<td colspan="11"><div class="inner">${cardBody(tr.dataset.sym,c)}</div></td>`;
+  tr.after(d);
+});
 $('filter').addEventListener('input',rerender);
 $('grp').addEventListener('change',rerender);
 

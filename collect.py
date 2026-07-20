@@ -35,7 +35,13 @@ from altcoin.analyzer import (analyze_multiple_coins, discover_top_symbols, comp
                               rank_symbols_by_volume, fetch_klines)
 from altcoin.features import score_components
 from altcoin.regime import classify_regime
-from altcoin.history import append_cycle, stats as history_stats
+from altcoin.history import (append_cycle, stats as history_stats,
+                             regime_streak, macro_series)
+from altcoin.regime import apply_hysteresis
+from altcoin.correlation import concentration_warning
+from altcoin.alerts import check_staleness
+from liquidity.stablecoin_liquidity import compute_stablecoin_liquidity
+from altcoin.news import fetch_news, is_configured as news_configured
 from liquidity.global_liquidity_engine import compute_global_liquidity_factor
 from liquidity.repo_market_stress import compute_repo_stress
 
@@ -53,29 +59,47 @@ TRACKED_SYMBOLS = ["ETHUSDT", "SOLUSDT", "BNBUSDT"]
 #     symbol Binance no longer trades, so a stale entry here costs nothing
 from altcoin.fundamentals import (DEFI_PROTOCOLS, fetch_fundamentals,
                                    blend_composite, ANNUALIZE_30D)
-from altcoin.vaf import evaluate_token, load_overrides
+from altcoin.vaf import evaluate_token, load_overrides, compute_entry_timing, entry_grade
 
 SYMBOL_GROUPS = {
-    # DeFi tier: symbols mirror the fundamentals layer's protocol map so
-    # the two universes can't drift apart
-    "defi": sorted(DEFI_PROTOCOLS),
-    # Infrastructure: oracles/data/interop — the non-DeFi sector with the
-    # most measurable fundamentals (Chainlink & Pyth have fee data on
-    # DeFiLlama, wired in fundamentals.DEFI_PROTOCOLS)
-    "infra": ["LINKUSDT", "PYTHUSDT", "GRTUSDT", "WUSDT", "AXLUSDT"],
-    # AI/compute: strong-narrative sector; fundamentals mostly n/a
-    # free-tier, so these ride the technical + VaF-manual layers
-    "ai": ["TAOUSDT", "RENDERUSDT", "FETUSDT", "NEARUSDT", "WLDUSDT"],
+    # ── Sector taxonomy ──
+    # Deterministic curation (no API category lookups — they drift and
+    # misclassify). Rules:
+    #   - Each symbol belongs to EXACTLY ONE sector (enforced by a
+    #     self-test). Conflicts resolve to the more fundamental identity:
+    #     NEAR is l1 (not ai), DOGE is l1 (own chain), RENDER is ai
+    #     (not depin), LDO is defi (not staking).
+    #   - "defi" is defined here explicitly and is NOT derived from the
+    #     fundamentals protocol map (that map is a superset that also
+    #     carries oracle slugs for the infra sector).
+    #   - Coins outside every sector (EXTEND_TOP discoveries) are tagged
+    #     "other" at runtime.
+    #   - Wrong/renamed tickers cost nothing: volume-ranking prunes them.
     "l1": [
         "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT",
         "TRXUSDT", "TONUSDT", "AVAXUSDT", "DOTUSDT", "LTCUSDT", "BCHUSDT",
         "NEARUSDT", "ICPUSDT", "APTUSDT", "SUIUSDT", "ATOMUSDT", "ALGOUSDT",
         "HBARUSDT", "XLMUSDT", "ETCUSDT", "VETUSDT", "FLOWUSDT", "XTZUSDT",
         "SEIUSDT", "INJUSDT", "TIAUSDT", "EGLDUSDT", "KAVAUSDT",
-        "SUSDT",    # Sonic (ex-Fantom)
-        "BERAUSDT", # Berachain
+        "SUSDT", "BERAUSDT",
     ],
+    "l2": ["OPUSDT", "ARBUSDT", "STRKUSDT", "POLUSDT", "ZKUSDT",
+            "TAIKOUSDT", "LINEAUSDT"],
+    "defi": ["AAVEUSDT", "UNIUSDT", "PENDLEUSDT", "MORPHOUSDT", "LDOUSDT",
+              "CRVUSDT", "COMPUSDT", "GMXUSDT", "DYDXUSDT", "JUPUSDT",
+              "RAYUSDT", "CAKEUSDT", "SNXUSDT", "ENAUSDT", "MKRUSDT"],
+    "infra": ["LINKUSDT", "PYTHUSDT", "GRTUSDT", "WUSDT", "AXLUSDT", "BANDUSDT"],
+    "ai": ["TAOUSDT", "RENDERUSDT", "FETUSDT", "WLDUSDT", "VIRTUALUSDT"],
+    "meme": ["SHIBUSDT", "PEPEUSDT", "WIFUSDT", "BONKUSDT", "FLOKIUSDT"],
+    "gaming": ["SANDUSDT", "MANAUSDT", "AXSUSDT", "GALAUSDT", "IMXUSDT", "APEUSDT"],
+    "depin": ["FILUSDT", "ARUSDT", "HNTUSDT", "IOTXUSDT", "THETAUSDT"],
+    "rwa": ["ONDOUSDT", "POLYXUSDT", "OMUSDT"],
+    "privacy": ["ZECUSDT", "DASHUSDT", "ZENUSDT"],
+    "restaking": ["EIGENUSDT", "ETHFIUSDT"],
 }
+
+# symbol -> sector, for tagging coins in ANY mode (incl. TOP_N discovery)
+SECTOR_LOOKUP = {s: g for g, syms in SYMBOL_GROUPS.items() for s in syms}
 
 DATA_OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.json")
 
@@ -129,10 +153,21 @@ def compute_coin_trend_score(coin_result, glf_score, repo_stress_score):
     # ── Score v2: blueprint §2.2A composite when the feature set exists ──
     feats = coin_result.get("features") or {}
     if any(v is not None for v in feats.values()):
-        score, drivers = score_components(feats, rsi, macro_component)
+        score, drivers, coverage = score_components(feats, rsi, macro_component)
         if score is not None:
-            return score, {"status": "ok", "version": "v2-features",
-                           "drivers": drivers}
+            detail = {"status": "ok", "version": "v2-features",
+                     "drivers": drivers, "coverage": coverage}
+            # Comparability flag: a non-Binance source means volume-derived
+            # inputs (VolPct90, ATRexp feed the breakout component) were
+            # degraded or absent for THIS coin on THIS cycle, so its score
+            # isn't computed from the same component set as a Binance-served
+            # coin even when the numeric coverage looks similar.
+            src = coin_result.get("data_source")
+            if src and src != "binance":
+                detail["comparability_note"] = (
+                    f"priced via {src} fallback this cycle \u2014 volume-derived "
+                    "inputs may be degraded; compare with caution")
+            return score, detail
 
     # Legacy v1 blend — kept for degraded rows (fallback source without
     # OHLC history) so a data-source failure degrades the score instead
@@ -164,6 +199,8 @@ def resolve_groups(group_str):
     the dashboard can filter without re-collecting.
     """
     names = [g.strip().lower() for g in (group_str or "").split(",") if g.strip()]
+    if names == ["all"]:
+        names = sorted(SYMBOL_GROUPS)
     unknown = [g for g in names if g not in SYMBOL_GROUPS]
     if unknown:
         raise ValueError(f"unknown group(s) {unknown}; valid: {sorted(SYMBOL_GROUPS)}")
@@ -184,6 +221,9 @@ def main():
     parser.add_argument("--top", type=int, default=None, metavar="N",
                          help="Auto-track the top N altcoin USDT pairs by 24h volume "
                               "(stablecoins/leveraged tokens excluded, BTC is benchmark)")
+    parser.add_argument("--extend-top", type=int, default=None, metavar="N",
+                         help="With --group: ALSO track the top N altcoin USDT pairs by "
+                              "24h volume beyond the curated groups (tagged group 'market')")
     parser.add_argument("--group", type=str, default=None,
                          help="Curated universe(s), comma-separated: 'l1', 'defi', or "
                               "'l1,defi' for both in one dashboard. Combine with --top N "
@@ -213,6 +253,17 @@ def main():
             symbols = ranked
         if top_n:
             symbols = symbols[:top_n]
+        env_ext = os.environ.get("EXTEND_TOP")
+        extend_n = args.extend_top or (int(env_ext) if env_ext and env_ext.isdigit() else None)
+        if extend_n:
+            market = discover_top_symbols(extend_n) or []
+            added = [s for s in market if s not in groups_map]
+            for s in added:
+                groups_map[s] = ["market"]
+            symbols = symbols + added
+            group_label += f"+top{extend_n}"
+            print(f"[Collect] Extended universe: +{len(added)} market coins "
+                  f"beyond curated groups")
         universe = {"mode": group_label, "curated": len(curated),
                     "tracked": len(symbols), "groups": sorted(set(
                         g for gs in groups_map.values() for g in gs))}
@@ -228,6 +279,19 @@ def main():
         symbols = ([s.strip().upper() for s in raw.split(",") if s.strip()]
                    if raw else TRACKED_SYMBOLS)
         universe = {"mode": "custom" if raw else "default", "tracked": len(symbols)}
+
+    # ── universal sector tagging ──
+    # Every tracked coin gets a sector regardless of how it was selected:
+    # curated members keep their group tag, discovery/custom coins get
+    # their sector from SECTOR_LOOKUP, unknowns become "other". This is
+    # what makes TOP_N / EXTEND_TOP universes fully categorized instead
+    # of one undifferentiated "market" lump.
+    for s in symbols:
+        if s not in groups_map:
+            groups_map[s] = [SECTOR_LOOKUP.get(s, "other")]
+        elif groups_map[s] == ["market"]:
+            groups_map[s] = [SECTOR_LOOKUP.get(s, "other")]
+    universe["groups"] = sorted(set(g for gs in groups_map.values() for g in gs))
 
     print(f"[Collect] Tracking {len(symbols)} coins: {symbols}", file=sys.stderr)
 
@@ -260,6 +324,11 @@ def main():
         }
 
     # ── Fundamental Intelligence layer (DeFi protocols only) ──
+    # Loaded once, unconditionally: used by full VaF (DeFi/infra coins
+    # below) AND by the standalone entry-timing pass (every coin) --
+    # the same vaf_overrides.json schema serves both.
+    overrides = load_overrides()
+
     fund_symbols = [s for s in coins_output if s in DEFI_PROTOCOLS]
     if fund_symbols:
         print(f"[Collect] Fetching fundamentals for {len(fund_symbols)} DeFi protocols")
@@ -282,7 +351,6 @@ def main():
         peer_pf = [mcaps[s] / (r["fees_30d"] * ANNUALIZE_30D)
                    for s, r in raws.items()
                    if s in mcaps and r.get("fees_30d")]
-        overrides = load_overrides()
         for symbol, raw in raws.items():
             row = coins_output[symbol]
             row["vaf"] = evaluate_token(
@@ -294,9 +362,68 @@ def main():
                   f"OTF={row['vaf']['otf']} VFR={row['vaf']['vfr']['display']} "
                   f"conf={row['vaf']['confidence']} -> {row['vaf']['verdict']}")
 
+    # ── Entry Timing grade: OTF for the WHOLE universe, not just DeFi ──
+    # Coins with a full VaF row reuse its OTF verbatim (single source of
+    # truth, no risk of two "OTF" numbers drifting apart under the same
+    # name). Every other coin gets OTF computed standalone from data it
+    # already has (trend drivers + features) -- see compute_entry_timing.
+    for symbol, row in coins_output.items():
+        if row.get("status") != "ok":
+            continue
+        if "vaf" in row:
+            row["entry_timing"] = {
+                "otf": row["vaf"]["otf"],
+                "coverage": row["vaf"]["coverage"].get("otf"),
+                "grade": entry_grade(row["vaf"]["otf"], row["vaf"]["coverage"].get("otf")),
+            }
+        else:
+            row["entry_timing"] = compute_entry_timing(
+                features=row.get("features"),
+                trend_drivers=(row.get("trend_score_detail") or {}).get("drivers"),
+                overrides=overrides.get(symbol))
+    graded = sum(1 for r in coins_output.values() if r.get("entry_timing", {}).get("grade") not in (None, "N/A"))
+    print(f"[Collect] Entry Timing graded: {graded}/{len(coins_output)} coins")
+
+    # ── News sentiment & catalyst layer (display-only) ──
+    if news_configured():
+        try:
+            news = fetch_news(list(coins_output))
+            for symbol, nd in news.items():
+                if symbol in coins_output:
+                    coins_output[symbol]["news"] = nd
+            print(f"[Collect] News layer: {len(news)} coins with tagged posts")
+        except Exception as e:
+            print(f"[Collect] News layer failed: {e}", file=sys.stderr)
+
+    # ── Stablecoin liquidity (measured leg of the v2.0 liquidity score) ──
+    stable_score, stable_detail = compute_stablecoin_liquidity()
+    if stable_score is not None:
+        print(f"[Collect] Stablecoin liquidity: {stable_score} "
+              f"(30d {stable_detail['growth_30d']:+.2%})")
+
+    # ── Market structure snapshot: BTC dominance ──
+    # CoinGecko /global is keyless; deltas come from OUR OWN accumulated
+    # daily snapshots in history.db (honest n/a until >=8 days stored).
+    btc_dom = None
+    try:
+        import requests as _rq
+        g = _rq.get("https://api.coingecko.com/api/v3/global", timeout=15).json()
+        btc_dom = round(float(g["data"]["market_cap_percentage"]["btc"]), 2)
+    except Exception as e:
+        print(f"[Collect] BTC.D fetch failed: {e}", file=sys.stderr)
+    dom_hist = macro_series("macro.market.btc_dominance")
+    dom_d7 = round(btc_dom - dom_hist[-7][1], 2) if btc_dom is not None and len(dom_hist) >= 7 else None
+    market = {"btc_dominance": btc_dom, "btc_dominance_d7": dom_d7,
+              "history_days": len(dom_hist)}
+
     btc_klines = fetch_klines("BTCUSDT")
     btc_closes = [c for _, _, _, c, _ in btc_klines] if btc_klines else None
     regime = classify_regime(btc_closes, glf_score=glf_score, repo_stress=repo_score)
+    prev_state, streak = regime_streak()
+    regime = apply_hysteresis(regime, prev_state, streak)
+    if regime.get("held"):
+        print(f"[Collect] Regime hysteresis: holding {regime['state']}, "
+              f"pending {regime['pending']}")
     print(f"[Collect] Market regime: {regime['state']} ({'; '.join(regime['reasons'])})")
 
     alt_season = compute_alt_season(coin_results)
@@ -309,7 +436,10 @@ def main():
         "universe": universe,
         "alt_season": alt_season,
         "regime": regime,
+        "market": market,
         "macro": {
+            "stablecoin_liquidity": stable_score,
+            "stablecoin_detail": stable_detail,
             "glf_score": glf_score,
             "glf_details": glf_details,
             "repo_stress_score": repo_score,
@@ -318,11 +448,27 @@ def main():
         "coins": coins_output,
     }
 
+    # ── Portfolio correlation warning (top-10 by trend_score) ──
+    # Zero new API calls: closes_30d is already in memory from analysis.
+    ranked = sorted(
+        (s for s, c in coins_output.items() if c.get("status") == "ok" and c.get("trend_score") is not None),
+        key=lambda s: -coins_output[s]["trend_score"])[:10]
+    closes_map = {s: coins_output[s].get("closes_30d") for s in ranked}
+    conc = concentration_warning(ranked, closes_map)
+    if conc:
+        output["concentration_warning"] = conc
+        flag = "\u26a0 HIGH CONCENTRATION" if conc["flag"] else "ok"
+        print(f"[Collect] Top-10 correlation: avg={conc['avg_corr']} ({flag})")
+
+    # ── Staleness alert: check the OUTGOING file's age before we overwrite it ──
+    check_staleness(DATA_OUT, max_age_hours=int(os.environ.get("STALE_ALERT_HOURS", 8)))
+
     with open(DATA_OUT, "w") as f:
         json.dump(output, f, indent=2, default=str)
 
     print(f"\n[Collect] Wrote {DATA_OUT}")
-    rows = append_cycle(coins_output, output["macro"], universe, regime)
+    rows = append_cycle(coins_output, {**output["macro"], "market": market},
+                        universe, regime)
     hs = history_stats()
     print(f"[Collect] History: +{rows} rows -> {hs['rows']} rows across {hs['days']} days")
     print(f"\n{'='*60}")
@@ -340,4 +486,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from altcoin.alerts import send as _alert_send, format_exception_alert as _fmt_exc
+    try:
+        main()
+    except Exception as e:
+        _alert_send(_fmt_exc(e, context="collect.py main()"))
+        raise  # cron log still gets the full traceback; alert is additive, not a replacement

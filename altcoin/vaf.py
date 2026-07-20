@@ -257,11 +257,31 @@ def build_pillar(name, autos, overrides):
     scored = {k: v for k, v in metrics.items() if v["score"] is not None}
     cov_w = sum(v["weight"] for v in scored.values())
     raw = sum(v["score"] for v in scored.values())
+    scaled = round(raw * 50.0 / cov_w, 1) if cov_w else None
+
+    # Exact driver decomposition -- NOT a SHAP-style approximation. Neutral
+    # baseline per metric is 50% of its own weight (the midpoint of the
+    # document's "Mixed" quality band); with that baseline, contributions
+    # are guaranteed to sum to (scaled - 25) exactly, the same identity
+    # trend_score's driver breakdown uses (sum = score - 50). This works
+    # here for the identical reason it works there: the pillar is a
+    # weighted LINEAR sum, so exact attribution needs no sampling or
+    # estimation -- SHAP exists to approximate attribution in non-linear
+    # models, which this pillar simply isn't.
+    drivers = [
+        {"metric": k, "score": round(v["score"], 1), "weight": v["weight"],
+         "provenance": v["provenance"],
+         "contribution": round((v["score"] - 0.5 * v["weight"]) * 50.0 / cov_w, 2)}
+        for k, v in scored.items()
+    ] if cov_w else []
+    drivers.sort(key=lambda d: -abs(d["contribution"]))
+
     return {
         "metrics": metrics,
         "raw": round(raw, 1),
-        "scaled": round(raw * 50.0 / cov_w, 1) if cov_w else None,
+        "scaled": scaled,
         "coverage": round(cov_w / 50.0, 2),
+        "drivers": drivers,
     }
 
 
@@ -366,6 +386,68 @@ def load_overrides(path=None):
             return json.load(f)
     except (ValueError, OSError):
         return {}
+
+
+def compute_entry_timing(features, trend_drivers, overrides=None):
+    """
+    Standalone Opportunity & Timing score -- the OTF pillar, but freed
+    from the VaF pipeline so it can run for ANY coin in the universe,
+    not just the ~15 DeFi/infra tokens that have fundamentals data.
+
+    Three of OTF's five metrics need no fundamentals at all:
+      market_structure   from trend_score's own breakout/consistency drivers
+      relative_strength  from IR_7d vs BTC (already computed for every coin)
+      execution_quality  from position in the 30d range
+    The other two (catalyst_timing, supply_timing) stay manual-only and
+    are simply absent -- renormalized out -- unless the SAME
+    vaf_overrides.json entry for this symbol happens to carry an "otf"
+    block (the schema is identical, so a coin can get catalyst/supply
+    timing filled in independently of whether it has full VaF fundamentals).
+
+    For a coin that DOES have a full VaF row, this function is NOT
+    re-run -- collect.py reuses vaf["otf"]/vaf["coverage"]["otf"]
+    directly so there is exactly one source of truth for OTF, never two
+    numbers that could quietly drift apart under the same meaning.
+
+    Returns {"otf": float|None, "coverage": float, "grade": str}.
+    """
+    ov_otf = (overrides or {}).get("otf", {})
+    autos = {
+        "market_structure": score_market_structure(trend_drivers),
+        "relative_strength": score_relative_strength(features),
+        "execution_quality": score_execution_quality(features),
+    }
+    pillar = build_pillar("otf", autos, {"otf": ov_otf} if ov_otf else {})
+    return {
+        "otf": pillar["scaled"],
+        "coverage": pillar["coverage"],
+        "grade": entry_grade(pillar["scaled"], pillar["coverage"]),
+    }
+
+
+def entry_grade(otf_scaled, coverage):
+    """
+    Letter grade for "is now a reasonable time to look at this coin" --
+    a simplified 4-bucket read of OTF, collapsing the document's 5 tier
+    bands (Strong/Good/Watchlist/Weak/Bad) into the vocabulary asked
+    for directly: A+ / A / B / Avoid. The three numeric boundaries
+    (41, 35, 28) are NOT new thresholds -- they are exactly the OTF
+    score bands already locked in the VaF v1.0 document; only the
+    label vocabulary is simplified, nothing about the math changes.
+
+    Returns "N/A" when coverage is too thin to grade responsibly (can
+    only happen if trend_score itself has no drivers for this coin --
+    i.e. the coin has no usable price history yet).
+    """
+    if otf_scaled is None or coverage is None or coverage < 0.30:
+        return "N/A"
+    if otf_scaled >= 41:
+        return "A+"
+    if otf_scaled >= 35:
+        return "A"
+    if otf_scaled >= 28:
+        return "B"
+    return "Avoid"
 
 
 def evaluate_token(symbol, raw, mcap, features, trend_drivers,

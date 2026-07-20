@@ -272,7 +272,7 @@ def score_components(f, rsi, macro_component):
         comps["macro"] = max(0.0, min(100.0, macro_component))
 
     if not comps:
-        return None, []
+        return None, [], {"used": 0, "total": len(WEIGHTS), "weight_covered": 0.0}
 
     total_w = sum(WEIGHTS[k] for k in comps)
     score = sum(WEIGHTS[k] * v for k, v in comps.items()) / total_w
@@ -286,4 +286,12 @@ def score_components(f, rsi, macro_component):
         for k, v in comps.items()
     ]
     drivers.sort(key=lambda d: -abs(d["contribution"]))
-    return round(score, 1), drivers
+    # Coverage: how many of the 5 possible components actually fed this score,
+    # and what fraction of full weight they represent. Surfaced so two coins
+    # with the same numeric score can be told apart -- one from 5/5 components,
+    # another from 2/5 -- instead of looking equivalent (addresses the
+    # cross-coin comparability gap flagged in review).
+    coverage = {"used": len(comps), "total": len(WEIGHTS),
+               "weight_covered": round(total_w, 2),
+               "missing": sorted(set(WEIGHTS) - set(comps))}
+    return round(score, 1), drivers, coverage

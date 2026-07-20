@@ -83,7 +83,10 @@ def build_symbol_map(coins_rows):
 def chart_to_daily(rows, days=30):
     """
     Chart rows [[ts_sec, price_usd, price_btc, price_eth], ...] ->
-    (usd_closes, btc_ratio_series), both daily and oldest-first.
+    (usd_closes, btc_ratio_series, eth_ratio_series), all daily and
+    oldest-first. eth_ratio_series may contain None entries (or be all
+    None) if the provider doesn't return row[3] -- callers must treat
+    that as "unavailable", never guess it.
 
     Granularity of period=1m is provider-defined (may be hourly), so
     rows are bucketed by UTC date and the LAST point of each day is the
@@ -98,15 +101,21 @@ def chart_to_daily(rows, days=30):
             ts, usd, btc = int(row[0]), float(row[1]), float(row[2])
         except (TypeError, ValueError, IndexError):
             continue
+        eth = None
+        try:
+            eth = float(row[3])
+        except (TypeError, ValueError, IndexError):
+            pass
         day = datetime.fromtimestamp(ts, tz=timezone.utc).date()
         if day not in by_day:
             order.append(day)
-        by_day[day] = (usd, btc)
+        by_day[day] = (usd, btc, eth)
     today = datetime.now(timezone.utc).date()
     days_sorted = [d for d in sorted(order) if d != today][-days:]
     usd_closes = [by_day[d][0] for d in days_sorted]
     btc_ratios = [by_day[d][1] for d in days_sorted]
-    return usd_closes, btc_ratios
+    eth_ratios = [by_day[d][2] for d in days_sorted]
+    return usd_closes, btc_ratios, eth_ratios
 
 
 # ── Live fetchers ──
@@ -175,11 +184,27 @@ def analyze_coins_fallback(symbols, compute_rvm, compute_rsi):
 
     results = {}
     for cid, (symbol, vol24) in wanted.items():
-        closes, btc_ratios = chart_to_daily(charts.get(cid))
+        closes, btc_ratios, eth_ratios = chart_to_daily(charts.get(cid))
         if len(closes) < 8:
             continue
         rvm = compute_rvm(closes)
         ratio_rvm = compute_rvm(btc_ratios) if len(btc_ratios) >= 8 else None
+
+        # Reconstruct implied BTC/ETH USD series so performance is computed
+        # by the SAME compute_performance() function (same excess-return
+        # definition) used for the Binance/Bybit tiers -- never a second,
+        # subtly-different "vs BTC" formula living under the same field
+        # name. btc_ratio here is the coin's price denominated in BTC, so
+        # coin_usd / btc_ratio recovers BTC's own USD price at that point.
+        from altcoin.analyzer import compute_performance
+        implied_btc = [u / r for u, r in zip(closes, btc_ratios) if r] \
+            if btc_ratios and all(btc_ratios) else None
+        implied_eth = [u / r for u, r in zip(closes, eth_ratios) if r] \
+            if eth_ratios and all(v is not None and v > 0 for v in eth_ratios) else None
+        performance = compute_performance(
+            closes, btc_closes=implied_btc, eth_closes=implied_eth,
+            is_btc=(symbol == "BTCUSDT"), is_eth=(symbol == "ETHUSDT"))
+
         results[symbol] = {
             "symbol": symbol,
             "status": "ok",
@@ -195,6 +220,7 @@ def analyze_coins_fallback(symbols, compute_rvm, compute_rsi):
             "vol_trend": None,
             **(rvm or {}),
             "btc_ratio_trend": ratio_rvm["momentum"] if ratio_rvm else None,
+            "performance": performance,
         }
     return results
 

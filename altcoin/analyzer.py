@@ -221,7 +221,57 @@ def fetch_klines(symbol, interval="1d", limit=100):
         return None
 
 
-def analyze_coin(symbol, btc_closes=None, klines=None):
+def compute_performance(closes, btc_closes=None, eth_closes=None, is_btc=False, is_eth=False):
+    """
+    Precise 1D / 7D / 30D performance for a coin, plus excess return vs
+    BTC and vs ETH over the same windows.
+
+    Deliberately computed from the FULL close series passed in (up to
+    100 candles), never from a display-truncated array — this is the
+    fix for a real bug: the dashboard's old "30D" figure was derived
+    client-side from a 30-point array (29 intervals, not 30), silently
+    off by one day. Here, 30D means exactly index -1 vs index -31.
+
+    Excess return (coin_return - benchmark_return) is used rather than
+    a ratio-momentum metric (which is what the old "vs BTC 3/7D" chip
+    showed) because excess return is directly interpretable as a
+    percentage ("+3.1% vs BTC over 7D"), while the old metric was the
+    rate of change of the coin/BTC ratio -- a genuinely different,
+    much less intuitive quantity that likely caused the "data looks
+    wrong" impression: its raw values (e.g. 0.00133) don't read as a
+    performance percentage at all.
+
+    A coin is never compared against itself (is_btc/is_eth suppress the
+    respective vs_* fields to None rather than showing a trivial 0.00%).
+
+    Returns a dict with keys ret_1d, ret_7d, ret_30d, vs_btc_1d/7d/30d,
+    vs_eth_1d/7d/30d -- every value is None (not 0, not omitted) when
+    there isn't enough history, so a short-lived coin's missing 30D
+    figure is visibly missing, not silently zero.
+    """
+    def ret(series, lag):
+        if series is None or len(series) <= lag:
+            return None
+        return series[-1] / series[-1 - lag] - 1
+
+    windows = {"1d": 1, "7d": 7, "30d": 30}
+    out = {}
+    for label, lag in windows.items():
+        out[f"ret_{label}"] = round(r, 4) if (r := ret(closes, lag)) is not None else None
+
+    for bname, bseries, skip in (("btc", btc_closes, is_btc), ("eth", eth_closes, is_eth)):
+        for label, lag in windows.items():
+            key = f"vs_{bname}_{label}"
+            if skip:
+                out[key] = None
+                continue
+            r_coin = ret(closes, lag)
+            r_bench = ret(bseries, lag)
+            out[key] = round(r_coin - r_bench, 4) if (r_coin is not None and r_bench is not None) else None
+    return out
+
+
+def analyze_coin(symbol, btc_closes=None, klines=None, eth_closes=None):
     """
     Compute a coin's technical state: RSI, return/volatility/momentum,
     and (if btc_closes is provided) its ratio trend vs BTC.
@@ -292,15 +342,23 @@ def analyze_coin(symbol, btc_closes=None, klines=None):
         result["btc_ratio_trend"] = None
         result["btc_ratio_latest"] = None
 
+    # Precise 1D/7D/30D performance + excess return vs BTC/ETH (see
+    # compute_performance docstring for why this replaces btc_ratio_trend
+    # as the user-facing "performance" figure -- that field stays above,
+    # unchanged, as an internal input to feature scoring).
+    result["performance"] = compute_performance(
+        closes, btc_closes=btc_closes, eth_closes=eth_closes,
+        is_btc=(symbol == "BTCUSDT"), is_eth=(symbol == "ETHUSDT"))
+
     return result
 
 
-def analyze_multiple_coins(symbols, btc_symbol="BTCUSDT"):
+def analyze_multiple_coins(symbols, btc_symbol="BTCUSDT", eth_symbol="ETHUSDT"):
     """
-    Analyze multiple coins in one call, fetching BTC klines exactly once
-    and reusing them for every coin's ratio calculation — this is the
-    concrete mechanism that keeps multi-coin tracking cheap (1 + N API
-    calls for N coins, not 2N).
+    Analyze multiple coins in one call, fetching BTC AND ETH klines
+    exactly once and reusing them for every coin's ratio/performance
+    calculation — the concrete mechanism that keeps multi-coin tracking
+    cheap (2 + N API calls for N coins, not 3N).
 
     Args:
         symbols: list of Binance pairs, e.g. ["ETHUSDT", "SOLUSDT"]
@@ -312,20 +370,33 @@ def analyze_multiple_coins(symbols, btc_symbol="BTCUSDT"):
     btc_closes = [c for _, _, _, c, _ in btc_klines] if btc_klines else None
     if btc_closes is None:
         print(f"[Analyzer] WARNING: {btc_symbol} fetch failed — "
-              f"btc_ratio_trend will be unavailable for all coins this cycle",
+              f"btc_ratio_trend and vs-BTC performance will be unavailable this cycle",
               file=sys.stderr)
 
+    # ETH closes are only fetched separately when ETH isn't already the
+    # benchmark being reused as btc_closes (it never is) -- always a
+    # distinct fetch, but still just ONE call shared across all symbols.
+    eth_klines = fetch_klines(eth_symbol)
+    eth_closes = [c for _, _, _, c, _ in eth_klines] if eth_klines else None
+    if eth_closes is None:
+        print(f"[Analyzer] WARNING: {eth_symbol} fetch failed — "
+              f"vs-ETH performance will be unavailable this cycle", file=sys.stderr)
+
     results = {}
+    # adaptive pacing: 0.2s is polite for a dozen coins but adds 80s of
+    # pure sleep at 400 coins. Klines weigh 2 of Binance's 6000/min budget,
+    # so 0.05s pacing on big universes stays far under the limit.
+    pace = 0.05 if len(symbols) > 100 else 0.2
     for symbol in symbols:
-        results[symbol] = analyze_coin(symbol, btc_closes=btc_closes)
+        results[symbol] = analyze_coin(symbol, btc_closes=btc_closes, eth_closes=eth_closes)
         if results[symbol].get("status") == "ok":
             results[symbol]["data_source"] = "binance"
-        time.sleep(0.2)  # light rate-limit courtesy, Binance public API has generous but non-zero limits
+        time.sleep(pace)
 
     # ── Tier 2: Bybit (keyless, full OHLCV parity) ──
     # Same tuple shape as Binance klines, so recovered coins go through
     # the identical analyze_coin pipeline: volume indicators, features,
-    # everything — only the data_source tag differs.
+    # performance vs BTC/ETH -- everything; only the data_source tag differs.
     failed = [s for s, r in results.items() if r.get("status") != "ok"]
     if failed:
         from altcoin.bybit_fallback import fetch_klines_bybit
@@ -334,10 +405,15 @@ def analyze_multiple_coins(symbols, btc_symbol="BTCUSDT"):
         if bb_btc_closes is None:
             bb_btc = fetch_klines_bybit(btc_symbol)
             bb_btc_closes = [c for _, _, _, c, _ in bb_btc] if bb_btc else None
+        bb_eth_closes = eth_closes
+        if bb_eth_closes is None:
+            bb_eth = fetch_klines_bybit(eth_symbol)
+            bb_eth_closes = [c for _, _, _, c, _ in bb_eth] if bb_eth else None
         for symbol in failed:
             kl = fetch_klines_bybit(symbol)
             if kl:
-                res = analyze_coin(symbol, btc_closes=bb_btc_closes, klines=kl)
+                res = analyze_coin(symbol, btc_closes=bb_btc_closes, klines=kl,
+                                   eth_closes=bb_eth_closes)
                 if res.get("status") == "ok":
                     res["data_source"] = "bybit"
                     results[symbol] = res
@@ -495,12 +571,13 @@ if __name__ == "__main__":
         for h in range(0, 24, 6):
             ts = int(day.replace(hour=h, minute=0, second=0, microsecond=0).timestamp())
             rows.append([ts, 100 + d + h * 0.01, (100 + d + h * 0.01) / 60000, 0])
-    usd, btc = chart_to_daily(rows, days=30)
+    usd, btc, eth = chart_to_daily(rows, days=30)
     print(f"chart_to_daily: {len(usd)} daily closes, last={usd[-1]}")
-    assert len(usd) == 30 and len(btc) == 30
+    assert len(usd) == 30 and len(btc) == 30 and len(eth) == 30
     assert abs(usd[-1] - (100 + 1 + 18 * 0.01)) < 1e-9, "must be LAST point of yesterday, today excluded"
     assert all(abs(u / b - 60000) < 1e-6 for u, b in zip(usd, btc)), "btc ratio series preserved"
-    print("✅ PASS: coinstats chart downsampling — hourly->daily, day-close semantics, today dropped\n")
+    assert all(v == 0.0 for v in eth), "eth_ratios extracted from row[3] alongside btc_ratios"
+    print("✅ PASS: coinstats chart downsampling — hourly->daily, day-close semantics, today dropped, eth_ratios extracted\n")
 
     # Blueprint feature layer (features.py) — pure math checks
     from altcoin.features import (compute_feature_set, score_components,
@@ -518,13 +595,13 @@ if __name__ == "__main__":
     assert f["prox_30d_high"] == 1.0, "monotonic uptrend closes at its 30d high"
     assert f["green_ratio_30d"] == 1.0 and f["ema_slope"] > 0
     assert f["vol_pct_90d"] == 100.0, "volume spike day ranks p100"
-    score, drivers = score_components(f, rsi=62, macro_component=60)
+    score, drivers, _cov1 = score_components(f, rsi=62, macro_component=60)
     print(f"feature score={score}, top driver={drivers[0]['component']} ({drivers[0]['contribution']:+})")
     assert score is not None and score > 70, "textbook breakout setup must score high"
     assert drivers and abs(sum(d['contribution'] for d in drivers) - (score-50)) < 0.5, \
         "driver contributions must decompose the score (explainability contract)"
     # graceful degradation: no features at all -> None (caller falls to v1)
-    s_none, d_none = score_components({}, rsi=None, macro_component=None)
+    s_none, d_none, _cov2 = score_components({}, rsi=None, macro_component=None)
     assert s_none is None and d_none == []
     print("✅ PASS: feature engineering + composite score v2 with additive drivers\n")
 
@@ -687,6 +764,223 @@ if __name__ == "__main__":
     assert compute_alt_season({"A": {"status": "ok", "outperforms_btc_90d": True}}) is None, \
         "tiny sample must return None, not a confident index"
     print("✅ PASS: alt season index — band labels, young-coin exclusion, min-sample guard\n")
+
+    # News layer pure transforms (news.py)
+    from altcoin.news import aggregate_posts, detect_catalysts
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    now = _dt.now(_tz.utc)
+    posts = [
+      {"title":"Exchange lists TOKEN, mainnet upgrade next week","url":"u1",
+       "published_at":(now-_td(hours=2)).isoformat(),
+       "votes":{"positive":9,"negative":1,"important":3},"currencies":[{"code":"AAA"}]},
+      {"title":"TOKEN team faces lawsuit after exploit","url":"u2",
+       "published_at":(now-_td(hours=5)).isoformat(),
+       "votes":{"positive":0,"negative":7},"currencies":[{"code":"BBB"}]},
+      {"title":"Old bullish thread","url":"u3",
+       "published_at":(now-_td(hours=100)).isoformat(),
+       "votes":{"positive":50,"negative":0},"currencies":[{"code":"CCC"}]},
+    ]
+    agg = aggregate_posts(posts, now=now)
+    assert agg["AAA"]["sentiment"] > 30 and set(agg["AAA"]["catalysts_pos"]) >= {"listing","mainnet","upgrade"}
+    assert agg["BBB"]["sentiment"] < -30 and set(agg["BBB"]["catalysts_neg"]) >= {"hack","lawsuit"}
+    assert agg["CCC"]["sentiment"] < agg["AAA"]["sentiment"], \
+        "100h-old votes must decay below fresh moderate votes"
+    assert agg["CCC"]["news_24h"] == 0 and agg["AAA"]["news_24h"] == 1
+    assert agg["AAA"]["top"]["url"] == "u1"
+    p, n = detect_catalysts("Major unlock scheduled; ETF decision pending")
+    assert "etf" in p and "unlock" in n
+    print(f"news agg: AAA={agg['AAA']['sentiment']} BBB={agg['BBB']['sentiment']} CCC={agg['CCC']['sentiment']}")
+    print("✅ PASS: news layer — vote sentiment, recency decay, catalyst vocabulary, top headline\n")
+
+    # Sector taxonomy: exactly one sector per symbol + lookup correctness
+    from collect import SYMBOL_GROUPS, SECTOR_LOOKUP
+    _all=[s for g in SYMBOL_GROUPS.values() for s in g]
+    assert len(_all)==len(set(_all)), "symbol in two sectors: "+str([s for s in set(_all) if _all.count(s)>1])
+    assert SECTOR_LOOKUP["LINKUSDT"]=="infra" and SECTOR_LOOKUP["AAVEUSDT"]=="defi" and SECTOR_LOOKUP["NEARUSDT"]=="l1"
+    print(f"✅ PASS: sector taxonomy — {len(SYMBOL_GROUPS)} sectors, {len(_all)} symbols, no overlaps\n")
+
+    # Regime hysteresis: dwell holds lateral moves, severity escalates instantly
+    from altcoin.regime import apply_hysteresis
+    bull={"state":"BULL_TREND","reasons":["r"],"inputs":{}}
+    side={"state":"SIDEWAYS","reasons":["r"],"inputs":{}}
+    risk={"state":"RISK_OFF","reasons":["repo"],"inputs":{}}
+    h=apply_hysteresis(side,"BULL_TREND",3)
+    assert h["state"]=="BULL_TREND" and h["held"] and h["pending"]=="SIDEWAYS", h
+    assert apply_hysteresis(side,"BULL_TREND",8)["state"]=="SIDEWAYS", "dwell satisfied -> switch"
+    e=apply_hysteresis(risk,"BULL_TREND",1)
+    assert e["state"]=="RISK_OFF" and not e.get("held"), "escalation must never be delayed"
+    assert apply_hysteresis(bull,None,None)["state"]=="BULL_TREND"
+    print("✅ PASS: regime hysteresis — 6d dwell, instant severity escalation\n")
+
+    # Stablecoin liquidity scoring
+    from liquidity.stablecoin_liquidity import score_from_series
+    grow=[100e9*(1.001**i) for i in range(60)]      # ~+3%/30d
+    s1,d1=score_from_series(grow)
+    flat=[100e9]*60
+    s2,d2=score_from_series(flat)
+    shrink=[100e9*(0.999**i) for i in range(60)]
+    s3,d3=score_from_series(shrink)
+    print(f"stablecoin scores: grow={s1} flat={s2} shrink={s3}")
+    assert s1>65 and abs(s2-50)<1 and s3<35
+    assert score_from_series([1e9]*10)[0] is None, "short history -> None, not fake neutral"
+    assert "excluded, not faked" in d1["coverage_note"]
+    print("✅ PASS: stablecoin liquidity — growth scoring, flat=50, short-history None\n")
+
+    # history macro_series + regime_streak on tmp db
+    from altcoin.history import append_cycle as _ac, macro_series as _ms, regime_streak as _rs
+    import tempfile, os as _os2
+    tdb=_os2.path.join(tempfile.mkdtemp(),"h.db")
+    for i,(dom,st) in enumerate([(58.2,"BULL_TREND"),(57.9,"BULL_TREND"),(57.1,"BULL_TREND")]):
+        _ac({"XUSDT":{"status":"ok"}},{"glf_score":60,"market":{"btc_dominance":dom}},
+            {"mode":"l1"},{"state":st},path=tdb,today=f"2026-07-1{i}")
+    ser=_ms("macro.market.btc_dominance",path=tdb)
+    assert [v for _,v in ser]==[58.2,57.9,57.1], ser
+    st,n=_rs(path=tdb)
+    assert st=="BULL_TREND" and n==3, (st,n)
+    print("✅ PASS: history — dotted macro_series path, regime streak counting\n")
+
+    # Coverage tracking in score_components (review fix #1: cross-coin comparability)
+    from altcoin.features import score_components as _sc
+    full_f = {"prox_30d_high": 0.8, "vol_pct_90d": 70, "atr_expansion": 1.1,
+              "ir_7d": 1.2, "green_ratio_30d": 0.7, "ema_slope": 0.02, "ema_streak": 5,
+              "compression_setup": False, "bbw_pct_90d": 40}
+    s_full, d_full, cov_full = _sc(full_f, rsi=60, macro_component=60)
+    partial_f = {"prox_30d_high": 0.8, "vol_pct_90d": 70, "atr_expansion": 1.1}
+    s_part, d_part, cov_part = _sc(partial_f, rsi=60, macro_component=60)
+    print(f"coverage full={cov_full}, partial={cov_part}")
+    assert cov_full["used"] == 5 and not cov_full["missing"]
+    assert cov_part["used"] < cov_full["used"] and "trend_consistency" in cov_part["missing"]
+    assert _sc({}, None, None)[2] == {"used": 0, "total": 5, "weight_covered": 0.0}
+    print("\u2705 PASS: score_components coverage \u2014 tells apart 5/5 vs partial component sets\n")
+
+    # Correlation / concentration warning (review fix #3: portfolio correlation)
+    from altcoin.correlation import correlation_matrix, concentration_warning, pearson
+    import random as _r5; _r5.seed(9)
+    base = [100.0]
+    for _ in range(29): base.append(base[-1]*(1+_r5.gauss(0.002,0.02)))
+    twin_a = base[:]  # perfectly correlated with base
+    twin_b = [x*1.01 for x in base]
+    indep = [100.0]
+    for _ in range(29): indep.append(indep[-1]*(1+_r5.gauss(-0.001,0.03)))
+    closes = {"A": base, "B": twin_a, "C": twin_b, "D": indep}
+    mat = correlation_matrix(closes)
+    assert mat[("A","B")] > 0.99, "identical series must be ~perfectly correlated"
+    conc = concentration_warning(["A","B","C","D"], closes, threshold=0.75)
+    print(f"concentration: avg_corr={conc['avg_corr']}, flag={conc['flag']}, pairs={conc['pairs']}")
+    assert conc["pairs"] == 6 and conc["flag"] in (True, False)
+    assert concentration_warning(["A","B"], closes) is None, "fewer than 3 pairs -> None, not a guess"
+    assert pearson([1,2,3],[1,2]) is None or isinstance(pearson([1,2,3,4,5],[1,2,3,4,5]), float)
+    print("\u2705 PASS: correlation matrix + concentration warning \u2014 detects twin series, min-sample guard\n")
+
+    # Alerts: pure formatters only (no network in self-test)
+    from altcoin.alerts import format_exception_alert, format_stale_alert, is_configured
+    try:
+        raise ValueError("synthetic failure for formatting test")
+    except ValueError as _ve:
+        msg = format_exception_alert(_ve, context="self-test")
+        assert "ValueError" in msg and "synthetic failure" in msg and "self-test" in msg
+    stale_msg = format_stale_alert("2026-07-10T00:00:00+00:00", 30.5, 8)
+    assert "30.5h" in stale_msg and "threshold 8h" in stale_msg
+    assert is_configured() in (True, False)  # must not raise when unconfigured
+    print("\u2705 PASS: alert formatters \u2014 exception + staleness messages well-formed\n")
+
+    # Precise multi-period performance vs BTC/ETH (fix for confusing
+    # "VS BTC 3/7D" momentum figure + off-by-one 30D display bug)
+    from altcoin.analyzer import compute_performance
+    # Coin: +1%/day compounding. BTC: +0.5%/day. ETH: -0.2%/day (independent).
+    coin = [100.0]
+    btc = [50000.0]
+    eth = [3000.0]
+    for _ in range(40):
+        coin.append(coin[-1]*1.01)
+        btc.append(btc[-1]*1.005)
+        eth.append(eth[-1]*0.998)
+    perf = compute_performance(coin, btc_closes=btc, eth_closes=eth)
+    exp_1d = coin[-1]/coin[-2]-1
+    exp_btc_1d = btc[-1]/btc[-2]-1
+    p1d, p7d, p30d = perf["ret_1d"], perf["ret_7d"], perf["ret_30d"]
+    pvb30, pve30 = perf["vs_btc_30d"], perf["vs_eth_30d"]
+    print(f"perf: 1d={p1d}, 7d={p7d}, 30d={p30d}, vs_btc_30d={pvb30}, vs_eth_30d={pve30}")
+    assert abs(perf["ret_1d"] - round(exp_1d, 4)) < 1e-6
+    assert abs(perf["ret_1d"] - round(coin[-1]/coin[-2]-1, 4)) < 1e-6, "1D must use index -1 vs -2 exactly"
+    assert abs(perf["ret_30d"] - round(coin[-1]/coin[-31]-1, 4)) < 1e-6, \
+        "30D must be index -1 vs -31 exactly (the off-by-one fix -- NOT closes[-1]/closes[0] on a 30-point array)"
+    assert perf["vs_btc_30d"] > 0.15, "coin compounding 2x BTC's daily rate must show large positive excess return"
+    assert perf["vs_eth_30d"] > perf["vs_btc_30d"], "ETH declining means excess vs ETH must exceed excess vs BTC"
+    exp_excess_1d = round(exp_1d - exp_btc_1d, 4)
+    assert abs(perf["vs_btc_1d"] - exp_excess_1d) < 1e-6, "excess return must be simple subtraction of returns, not a ratio-momentum figure"
+
+    # Self-comparison suppressed, not a trivial 0.0
+    perf_btc_self = compute_performance(btc, btc_closes=btc, eth_closes=eth, is_btc=True)
+    assert perf_btc_self["vs_btc_1d"] is None and perf_btc_self["vs_btc_30d"] is None
+    assert perf_btc_self["ret_1d"] is not None, "a coin's OWN return is still reported even when it IS the benchmark"
+
+    # Insufficient history -> None, never a guess or zero
+    short = [100.0, 101.0, 99.0]
+    perf_short = compute_performance(short, btc_closes=btc, eth_closes=eth)
+    assert perf_short["ret_1d"] is not None and perf_short["ret_7d"] is None and perf_short["ret_30d"] is None
+    assert perf_short["vs_btc_7d"] is None
+
+    # Missing benchmark entirely -> vs_* all None, own return still computed
+    perf_nobench = compute_performance(coin, btc_closes=None, eth_closes=None)
+    assert perf_nobench["ret_30d"] is not None and perf_nobench["vs_btc_30d"] is None and perf_nobench["vs_eth_30d"] is None
+    print("\u2705 PASS: compute_performance \u2014 exact 1D/7D/30D windows, true excess return (not ratio-momentum), self-comparison suppressed, honest None on missing data\n")
+
+    # Entry Timing grade (compute_entry_timing/entry_grade in vaf.py) --
+    # OTF freed from the DeFi-only VaF pipeline, usable for ANY coin
+    from altcoin.vaf import compute_entry_timing, entry_grade
+    strong_feats = {"ir_7d": 2.4, "prox_30d_high": 0.75}
+    strong_drivers = [{"component": "breakout", "value": 88},
+                       {"component": "trend_consistency", "value": 82}]
+    et_strong = compute_entry_timing(strong_feats, strong_drivers)
+    weak_feats = {"ir_7d": -1.5, "prox_30d_high": 0.15}
+    weak_drivers = [{"component": "breakout", "value": 20},
+                     {"component": "trend_consistency", "value": 15}]
+    et_weak = compute_entry_timing(weak_feats, weak_drivers)
+    print(f"entry timing: strong={et_strong}, weak={et_weak}")
+    assert et_strong["grade"] in ("A+", "A") and et_weak["grade"] == "Avoid"
+    assert et_strong["otf"] > et_weak["otf"]
+    # coverage: only 3/5 metrics available with no manual overrides -> ~64%
+    assert 0.5 < et_strong["coverage"] < 0.8, et_strong["coverage"]
+
+    # manual override (same vaf_overrides.json "otf" schema) raises coverage
+    et_with_manual = compute_entry_timing(strong_feats, strong_drivers,
+        overrides={"otf": {"catalyst_timing": 8, "supply_timing": 6}})
+    assert et_with_manual["coverage"] > et_strong["coverage"]
+
+    # grade boundaries match the locked VaF v1.0 OTF tier bands exactly (41/35/28)
+    assert entry_grade(41.0, 1.0) == "A+" and entry_grade(40.9, 1.0) == "A"
+    assert entry_grade(35.0, 1.0) == "A" and entry_grade(34.9, 1.0) == "B"
+    assert entry_grade(28.0, 1.0) == "B" and entry_grade(27.9, 1.0) == "Avoid"
+
+    # thin coverage / no data -> N/A, never a guessed letter
+    assert entry_grade(None, None) == "N/A"
+    assert compute_entry_timing(None, None)["grade"] == "N/A"
+    print("\u2705 PASS: entry timing grade \u2014 universal OTF, locked tier boundaries, thin-coverage N/A guard\n")
+
+    # Exact driver decomposition for VaF pillars (build_pillar) -- same
+    # identity as trend_score's, NOT a SHAP approximation, since the
+    # pillar is a weighted linear sum and needs no sampling to attribute.
+    from altcoin.vaf import build_pillar
+    autos = {"economic_scale": {"score": 10.5, "weight": 12, "provenance": "auto"},
+             "revenue_durability": {"score": 3.0, "weight": 10, "provenance": "proxy"}}
+    overrides = {"pq": {"moat": 11, "product_market_fit": 4, "execution_risk": 5}}
+    pillar = build_pillar("pq", autos, overrides)
+    print(f"PQ pillar: scaled={pillar['scaled']}, drivers={pillar['drivers']}")
+    contrib_sum = sum(d["contribution"] for d in pillar["drivers"])
+    assert abs(contrib_sum - (pillar["scaled"] - 25)) < 0.05, \
+        f"driver contributions must sum EXACTLY to scaled-25, got {contrib_sum} vs {pillar['scaled']-25}"
+    # sorted by |contribution| descending
+    mags = [abs(d["contribution"]) for d in pillar["drivers"]]
+    assert mags == sorted(mags, reverse=True), "drivers must be sorted strongest-first"
+    # provenance carried through per driver (manual overrides distinguishable from auto/proxy)
+    prov = {d["metric"]: d["provenance"] for d in pillar["drivers"]}
+    assert prov["moat"] == "manual" and prov["economic_scale"] == "auto"
+    # n/a metrics (no weight, no score) never appear as a driver
+    assert "supply_cleanliness" not in prov and "reliability" not in prov  # NF metrics, not in PQ at all
+    thin = build_pillar("pq", {}, {})
+    assert thin["drivers"] == [], "zero coverage -> zero drivers, never a fabricated one"
+    print("\u2705 PASS: VaF pillar driver decomposition \u2014 exact identity (Σcontrib = scaled-25), sorted, provenance-tagged, empty on zero coverage\n")
 
     print("ALL SELF-TESTS PASSED — confirms the same code path produces coin-specific,")
     print("distinguishable results for different symbols, not hardcoded output.")

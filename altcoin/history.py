@@ -36,6 +36,14 @@ CREATE TABLE IF NOT EXISTS universe (
     date TEXT PRIMARY KEY, mode TEXT, symbols TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS macro (
     date TEXT PRIMARY KEY, payload TEXT NOT NULL);
+-- Evaluation harness homes (doc v2.0 §7/§9): schema ready NOW so the
+-- day the dataset matures, backtests have somewhere to write. Metrics
+-- like DQS/precision/recall live here AFTER a backtest produces them —
+-- never displayed before that.
+CREATE TABLE IF NOT EXISTS backtest_runs (
+    run_id TEXT PRIMARY KEY, started_at TEXT, config TEXT, results TEXT);
+CREATE TABLE IF NOT EXISTS decision_quality_history (
+    run_id TEXT, regime TEXT, metric TEXT, value REAL);
 """
 
 
@@ -77,3 +85,48 @@ def stats(path=None):
     rows = c.execute("SELECT COUNT(*) FROM snapshots").fetchone()[0]
     c.close()
     return {"days": days, "rows": rows}
+
+
+def regime_streak(path=None):
+    """(state, consecutive_days) of the most recent stored regime, or
+    (None, None). Used by the hysteresis layer."""
+    c = _conn(path)
+    rows = c.execute("SELECT date, payload FROM macro ORDER BY date DESC LIMIT 30").fetchall()
+    c.close()
+    if not rows:
+        return None, None
+    states = []
+    for _, payload in rows:
+        try:
+            states.append((json.loads(payload).get("regime") or {}).get("state"))
+        except ValueError:
+            states.append(None)
+    latest = states[0]
+    if not latest:
+        return None, None
+    streak = 0
+    for s in states:
+        if s == latest:
+            streak += 1
+        else:
+            break
+    return latest, streak
+
+
+def macro_series(key_path, limit=90, path=None):
+    """[(date, value)] ascending for a dotted path inside the macro
+    payload, e.g. 'market.btc_dominance'. Missing keys skipped."""
+    c = _conn(path)
+    rows = c.execute("SELECT date, payload FROM macro ORDER BY date ASC").fetchall()
+    c.close()
+    out = []
+    for d, payload in rows[-limit:]:
+        try:
+            node = json.loads(payload)
+            for part in key_path.split("."):
+                node = node[part]
+            if isinstance(node, (int, float)):
+                out.append((d, float(node)))
+        except (ValueError, KeyError, TypeError):
+            continue
+    return out

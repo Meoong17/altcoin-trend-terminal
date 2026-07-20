@@ -18,5 +18,8 @@ __pycache__/
 # local history.db backups (the rotation dir from the VPS tutorial)
 backups/
 
-# NOTE: history.db itself is deliberately NOT ignored — the GitHub
-# Actions workflow commits it every cycle; it is the training dataset.
+# NOTE: history.db itself is deliberately NOT ignored — it's committed
+# to the repo every cycle (see push_history.sh in the VPS deployment
+# runbook) as an offsite backup of the training dataset.
+.news_cache.json
+.stablecoin_cache.json

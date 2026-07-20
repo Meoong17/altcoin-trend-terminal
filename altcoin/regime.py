@@ -90,3 +90,31 @@ def classify_regime(btc_closes, glf_score=None, repo_stress=None, t=THRESHOLDS):
 
     reasons.append("no threshold triggered")
     return {"state": "SIDEWAYS", "reasons": reasons, "inputs": inputs}
+
+
+SEVERITY = {"CAPITULATION_RECOVERY": 4, "RISK_OFF": 3, "BEAR_TREND": 2,
+            "BULL_TREND": 1, "SIDEWAYS": 0, "UNKNOWN": -1}
+
+
+def apply_hysteresis(new_regime, prev_state, days_in_prev, min_dwell=6):
+    """
+    Anti-flapping: a regime change only takes effect after the previous
+    state has lived >= min_dwell days — EXCEPT when the new state is more
+    severe (defensive states switch immediately; you never want hysteresis
+    delaying a RISK_OFF call). Returns the regime dict, annotated with
+    "held": True + the pending state when the switch is suppressed.
+    """
+    new_state = new_regime.get("state", "UNKNOWN")
+    if not prev_state or prev_state == new_state or new_state == "UNKNOWN":
+        return new_regime
+    if SEVERITY.get(new_state, 0) > SEVERITY.get(prev_state, 0):
+        return new_regime  # escalation is never delayed
+    if days_in_prev is not None and days_in_prev < min_dwell:
+        held = dict(new_regime)
+        held["state"] = prev_state
+        held["held"] = True
+        held["pending"] = new_state
+        held["reasons"] = [f"hysteresis: {prev_state} held (day {days_in_prev}/{min_dwell}),"
+                           f" pending {new_state}"] + new_regime.get("reasons", [])
+        return held
+    return new_regime
