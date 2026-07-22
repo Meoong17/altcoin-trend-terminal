@@ -210,6 +210,20 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
   padding:2px 7px;border-radius:5px;background:rgba(232,180,79,.12);color:var(--warn);
   border:1px solid rgba(232,180,79,.35)}
 .shortlist-empty{color:var(--muted);padding:32px 0;text-align:center;font-size:12px}
+#divscore{grid-column:1/-1;margin:0 0 12px;padding:12px 14px;border-radius:var(--r);
+  background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line)}
+#divscore .dh{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+#divscore .drow{display:flex;align-items:baseline;gap:12px}
+#divscore .dval{font-family:var(--disp);font-weight:700;font-size:24px}
+#divscore .dtag{font-size:10.5px;letter-spacing:.05em;padding:2px 9px;border-radius:5px}
+#divscore .dnames{font-size:9.5px;color:var(--muted);margin-top:5px}
+#nearmiss{grid-column:1/-1;margin:14px 0 0;padding-top:14px;border-top:1px dashed var(--line)}
+#nearmiss .nh{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.nm-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+.nm-row:last-child{border-bottom:none}
+.nm-sym{font-family:var(--disp);font-weight:700;font-size:12.5px;min-width:70px}
+.nm-gap{font-size:10px;color:var(--muted);min-width:100px}
+.nm-why{font-size:9.5px;color:var(--down);flex:1}
 
 /* ── table mode ── */
 #tablewrap{display:none;background:linear-gradient(180deg,var(--panel),var(--panel2));
@@ -450,6 +464,79 @@ function vafDrivers(vaf){
   }).filter(Boolean);
   if(!parts.length)return'';
   return `<div style="font-size:9.5px;color:var(--muted);margin:-3px 0 8px" data-tip="Strongest metric behind each VaF pillar's number \u2014 exact contribution (not approximated), same math as the trend-score driver breakdown.">↳ top drivers: ${parts.join(' &middot; ')}</div>`;
+}
+
+// ── Portfolio Concentration Score: turns the existing pairwise-correlation
+// concept into one summary percentage for whatever set is on screen (the
+// Shortlist), rather than only the fixed top-10-by-trend-score sample the
+// backend's concentration_warning covers. Same exact math (Pearson on 30d
+// daily returns), just computed client-side over the ACTUAL shown set.
+function dailyReturns(closes){
+  const r=[]; for(let i=1;i<closes.length;i++) r.push(closes[i]/closes[i-1]-1);
+  return r;
+}
+function pearson(a,b){
+  const n=Math.min(a.length,b.length); if(n<5)return null;
+  a=a.slice(-n); b=b.slice(-n);
+  const ma=a.reduce((s,x)=>s+x,0)/n, mb=b.reduce((s,x)=>s+x,0)/n;
+  let cov=0,va=0,vb=0;
+  for(let i=0;i<n;i++){cov+=(a[i]-ma)*(b[i]-mb);va+=(a[i]-ma)**2;vb+=(b[i]-mb)**2;}
+  if(va<=1e-18||vb<=1e-18)return null;
+  return cov/Math.sqrt(va*vb);
+}
+function diversityScore(short){
+  const rets=short.map(([s,c])=>[s,c.closes_30d?dailyReturns(c.closes_30d):null])
+    .filter(([,r])=>r&&r.length>=6);
+  if(rets.length<3)return null;
+  const pairs=[];
+  for(let i=0;i<rets.length;i++)for(let j=i+1;j<rets.length;j++){
+    const r=pearson(rets[i][1],rets[j][1]);
+    if(r!=null)pairs.push({a:rets[i][0],b:rets[j][0],r});
+  }
+  if(!pairs.length)return null;
+  const avg=pairs.reduce((s,p)=>s+p.r,0)/pairs.length;
+  return {diversity:Math.round((1-avg)*100), avgCorr:avg, pairs,
+          sectors:[...new Set(short.map(([,c])=>(c.groups||['other'])[0]))]};
+}
+function renderDiversity(short){
+  const ds=diversityScore(short);
+  if(!ds)return'';
+  const flag=ds.diversity<40;
+  const oneSector=ds.sectors.length===1;
+  const tagColor=flag?'var(--down)':ds.diversity<60?'var(--warn)':'var(--up)';
+  const tagBg=flag?'rgba(242,107,92,.12)':ds.diversity<60?'rgba(232,180,79,.12)':'rgba(52,217,139,.12)';
+  const label=flag?'HIGH CONCENTRATION':ds.diversity<60?'MODERATE':'DIVERSIFIED';
+  return `<div id="divscore">
+    <div class="dh" data-tip="1 minus the average pairwise correlation among shortlisted coins' 30d daily returns, as a percentage. Low = these aren't independent bets, they mostly move together.">PORTFOLIO DIVERSITY \u2014 THIS SHORTLIST</div>
+    <div class="drow"><span class="dval" style="color:${tagColor}">${ds.diversity}%</span>
+      <span class="dtag" style="background:${tagBg};color:${tagColor}">${label}</span></div>
+    <div class="dnames">${short.length} coins${oneSector?` \u2014 all tagged <b>${ds.sectors[0].toUpperCase()}</b>, one sector bet`:` across ${ds.sectors.length} sectors (${ds.sectors.map(s=>s.toUpperCase()).join(', ')})`}</div>
+  </div>`;
+}
+
+// ── Near Miss + Why Not: B-grade coins closest to the A threshold (OTF
+// >= 35), with their strongest NEGATIVE driver as the reason they haven't
+// qualified yet. Pure arithmetic distance to an already-locked boundary
+// (VaF v1.0's OTF tier bands) -- no forecast, no fabricated confidence.
+function nearMissSection(entries){
+  const A_THRESHOLD=35;
+  const bGrade=entries.filter(([,c])=>c.status==='ok' && c.entry_timing?.grade==='B'
+      && c.entry_timing?.otf!=null)
+    .map(([s,c])=>({s,c,gap:A_THRESHOLD-c.entry_timing.otf}))
+    .filter(x=>x.gap>0)
+    .sort((a,b)=>a.gap-b.gap)
+    .slice(0,5);
+  if(!bGrade.length)return'';
+  const rows=bGrade.map(({s,c,gap})=>{
+    const allDrivers=[...(c.trend_score_detail?.drivers||[]),
+      ...(c.vaf?.pillars?Object.values(c.vaf.pillars).flatMap(p=>p.drivers||[]):[])];
+    const worst=allDrivers.filter(d=>d.contribution<0).sort((a,b)=>a.contribution-b.contribution)[0];
+    const why=worst?`${(worst.metric||worst.component||'').replace(/_/g,' ')} ${worst.contribution}`:'insufficient coverage';
+    return `<div class="nm-row"><span class="nm-sym">${s.replace('USDT','')}</span>
+      <span class="nm-gap">${gap.toFixed(1)} pts from A</span>
+      <span class="nm-why">✗ ${why}</span></div>`;
+  }).join('');
+  return `<div id="nearmiss"><div class="nh" data-tip="Grade-B coins ranked by exact distance to the locked A threshold (OTF ≥ 35), with the strongest negative driver holding each one back. Not a prediction of when they'll cross it -- just today's gap.">NEAR MISS \u2014 CLOSEST TO A, AND WHY NOT YET</div>${rows}</div>`;
 }
 function newsChips(c){
   const n=c.news; if(!n)return'';
@@ -722,8 +809,10 @@ function render(d,force){
       placed.add(sym);
     }
     if(!short.length){
-      box.innerHTML='<div class="shortlist-empty">No coins currently grade A+/A under the active filters.<br>The screen is intentionally strict — an empty shortlist is a valid, honest result, not an error.</div>';
+      box.innerHTML='<div class="shortlist-empty">No coins currently grade A+/A under the active filters.<br>The screen is intentionally strict — an empty shortlist is a valid, honest result, not an error.</div>'
+        + nearMissSection(entries);
     }else{
+      box.innerHTML = renderDiversity(short);
       let i=0;
       for(const[sym,c]of short){
         const el=document.createElement('div');
@@ -733,6 +822,10 @@ function render(d,force){
         el.innerHTML=`<div class="chips" style="margin:0 0 6px">${researchTag}${corrTag}</div>`+cardBody(sym,c);
         box.appendChild(el);
       }
+      const nm=document.createElement('div');
+      nm.style.gridColumn='1/-1';
+      nm.innerHTML=nearMissSection(entries);
+      box.appendChild(nm);
     }
   }else if(VIEW==='cards'){
     $('tablewrap').style.display='none';$('showmore').style.display='none';
