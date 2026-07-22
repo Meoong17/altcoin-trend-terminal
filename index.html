@@ -203,6 +203,13 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
 #viewtg button{background:var(--panel);border:none;color:var(--muted);font-family:var(--mono);
   font-size:10.5px;letter-spacing:.08em;padding:6px 12px;cursor:pointer}
 #viewtg button.on{background:rgba(83,200,236,.12);color:var(--liq)}
+.researched-badge{display:inline-flex;align-items:center;gap:3px;font-size:8.5px;letter-spacing:.04em;
+  padding:2px 7px;border-radius:5px;background:rgba(157,123,234,.12);color:var(--vaf);
+  border:1px solid rgba(157,123,234,.35)}
+.corr-warn-tag{display:inline-flex;align-items:center;gap:3px;font-size:8.5px;
+  padding:2px 7px;border-radius:5px;background:rgba(232,180,79,.12);color:var(--warn);
+  border:1px solid rgba(232,180,79,.35)}
+.shortlist-empty{color:var(--muted);padding:32px 0;text-align:center;font-size:12px}
 
 /* ── table mode ── */
 #tablewrap{display:none;background:linear-gradient(180deg,var(--panel),var(--panel2));
@@ -312,6 +319,7 @@ tr.detail .inner{padding:14px 16px;border-bottom:1px solid var(--line2)}
     <div id="viewtg" role="group" aria-label="View">
       <button id="vt-table" type="button">TABLE</button>
       <button id="vt-cards" type="button">CARDS</button>
+      <button id="vt-short" type="button" data-tip="A+/A Entry Timing only, sorted so genuinely-researched coins (real VaF analyst input, not just auto-computed) come first, with a warning when two shortlisted coins are highly correlated with each other.">SHORTLIST</button>
     </div>
     <label class="cl" for="sort">sort</label>
     <select id="sort">
@@ -686,7 +694,47 @@ function render(d,force){
     <div class="stat"><span class="sk2">coins with catalysts</span><span class="sv" style="color:${catal?'var(--warn)':'var(--text)'}">${catal}</span></div>`;
 
   // ── render in the active view ──
-  if(VIEW==='cards'){
+  if(VIEW==='shortlist'){
+    $('tablewrap').style.display='none';$('showmore').style.display='none';
+    box.style.display='grid';box.innerHTML='';
+    // "Researched" = this coin has a VaF pillar with at least one manually
+    // provenanced driver (real analyst input), not just auto/proxy metrics.
+    const isResearched=c=>!!(c.vaf?.pillars && Object.values(c.vaf.pillars)
+      .some(p=>(p.drivers||[]).some(d=>d.provenance==='manual')));
+    const short=entries.filter(([,c])=>['A+','A'].includes(c.entry_timing?.grade))
+      .sort((a,b)=>{
+        const ra=isResearched(a[1])?1:0, rb=isResearched(b[1])?1:0;
+        if(ra!==rb)return rb-ra;   // researched coins first
+        return (b[1].composite_score??b[1].trend_score??0)-(a[1].composite_score??a[1].trend_score??0);
+      });
+    // Cross-reference against the concentration warning's high-correlation
+    // pairs: if a coin already placed in the shortlist shares a high-corr
+    // pair with a later one, tag the later one -- operationalizes "don't
+    // treat 5 correlated coins as 5 independent reasons for conviction."
+    const highPairs=(d.concentration_warning?.high_pairs)||[];
+    const placed=new Set();
+    const corrWarnings={};
+    for(const[sym]of short){
+      for(const[a,b]of highPairs){
+        const other = a===sym?b:(b===sym?a:null);
+        if(other && placed.has(other)){ corrWarnings[sym]=other; break; }
+      }
+      placed.add(sym);
+    }
+    if(!short.length){
+      box.innerHTML='<div class="shortlist-empty">No coins currently grade A+/A under the active filters.<br>The screen is intentionally strict — an empty shortlist is a valid, honest result, not an error.</div>';
+    }else{
+      let i=0;
+      for(const[sym,c]of short){
+        const el=document.createElement('div');
+        el.className='card enter'; el.style.animationDelay=Math.min(i++,10)*30+'ms';
+        const researchTag=isResearched(c)?'<span class="researched-badge">✓ VaF researched</span>':'';
+        const corrTag=corrWarnings[sym]?`<span class="corr-warn-tag">⚠ correlated w/ ${corrWarnings[sym].replace('USDT','')}</span>`:'';
+        el.innerHTML=`<div class="chips" style="margin:0 0 6px">${researchTag}${corrTag}</div>`+cardBody(sym,c);
+        box.appendChild(el);
+      }
+    }
+  }else if(VIEW==='cards'){
     $('tablewrap').style.display='none';$('showmore').style.display='none';
     box.style.display='grid';box.innerHTML='';
     let i=0;
@@ -764,7 +812,8 @@ const rerender=()=>{SHOWN=100;LAST_GEN=null;LAST&&render(LAST);};
 $('sort').addEventListener('change',rerender);
 $('vt-table').addEventListener('click',()=>{VIEW='table';syncToggle();rerender();});
 $('vt-cards').addEventListener('click',()=>{VIEW='cards';syncToggle();rerender();});
-function syncToggle(){$('vt-table').classList.toggle('on',VIEW==='table');$('vt-cards').classList.toggle('on',VIEW==='cards');}
+$('vt-short').addEventListener('click',()=>{VIEW='shortlist';syncToggle();rerender();});
+function syncToggle(){$('vt-table').classList.toggle('on',VIEW==='table');$('vt-cards').classList.toggle('on',VIEW==='cards');$('vt-short').classList.toggle('on',VIEW==='shortlist');}
 $('showmore').addEventListener('click',()=>{SHOWN+=100;LAST_GEN=null;LAST&&render(LAST);});
 document.querySelector('.tt thead').addEventListener('click',e=>{
   const k=e.target.closest('th')?.dataset.key;

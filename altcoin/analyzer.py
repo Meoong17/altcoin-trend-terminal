@@ -1028,6 +1028,19 @@ if __name__ == "__main__":
         "tuple shape (ts, high, low, close, QUOTE volume from volCcy index 6)"
     print("\u2705 PASS: OKX fallback tier \u2014 symbol mapping, newest-first reversal, quote-volume parsing (now actually wired into the chain, was dead code)\n")
 
+    # GLF China M2 date-guard (fix for the bug flagged "PENDING" since the
+    # first audit: a frozen FRED series must not silently feed GLF forever)
+    import sys as _sys3; _sys3.path.insert(0, ".")
+    from liquidity.global_liquidity_engine import _is_stale
+    from datetime import datetime as _dt3, timezone as _tz3, timedelta as _td3
+    fresh = (_dt3.now(_tz3.utc) - _td3(days=30)).strftime("%Y-%m-%d")
+    frozen = (_dt3.now(_tz3.utc) - _td3(days=400)).strftime("%Y-%m-%d")
+    assert _is_stale(fresh) is False, "a 30-day-old observation must NOT be flagged stale"
+    assert _is_stale(frozen) is True, "a 400-day-frozen observation MUST be flagged stale"
+    assert _is_stale(None) is True, "missing date -> treated as stale, never assumed fresh"
+    assert _is_stale("not-a-date") is True, "unparseable date -> stale, never a crash"
+    print("\u2705 PASS: GLF China M2 date-guard \u2014 frozen FRED series now excluded, not silently used as current\n")
+
     print("ALL SELF-TESTS PASSED — confirms the same code path produces coin-specific,")
     print("distinguishable results for different symbols, not hardcoded output.")
 

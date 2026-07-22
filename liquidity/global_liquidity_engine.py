@@ -33,11 +33,14 @@ FRED_KEY = os.getenv("FRED_API_KEY", "")
 _FRED_CACHE = {}
 
 def _fred(series, limit=13):
-    """Fetch FRED data with module-level cache."""
+    """Fetch FRED data with module-level cache. Returns values only
+    (unchanged contract); observation dates are cached alongside for
+    callers that need a staleness check -- see _fred_latest_date()."""
     global _FRED_CACHE
     cache_key = f"{series}:{limit}"
     if cache_key in _FRED_CACHE:
-        return _FRED_CACHE[cache_key]
+        cached = _FRED_CACHE[cache_key]
+        return cached[0] if isinstance(cached, tuple) else cached
     if not FRED_KEY:
         return None
     try:
@@ -50,11 +53,36 @@ def _fred(series, limit=13):
             return None
         obs = r.json().get("observations", [])
         vals = [float(o["value"]) for o in obs if o["value"] != "."]
+        latest_date = obs[0]["date"] if obs else None
         result = vals if vals else None
-        _FRED_CACHE[cache_key] = result
+        _FRED_CACHE[cache_key] = (result, latest_date)
         return result
     except:
         return None
+
+
+def _fred_latest_date(series, limit=13):
+    """Date string (YYYY-MM-DD) of the most recent observation for a
+    series already fetched via _fred() this cycle, or None. Reads the
+    same cache entry _fred() populates -- call _fred() first."""
+    cached = _FRED_CACHE.get(f"{series}:{limit}")
+    if isinstance(cached, tuple):
+        return cached[1]
+    return None
+
+
+def _is_stale(date_str, max_age_days=120):
+    """True if a FRED observation date is older than max_age_days -- the
+    guard that was missing for China M2 (see audit note below). 120 days
+    tolerates normal monthly-release lag; a series frozen for longer than
+    that is treated as unavailable, never silently used as if current."""
+    if not date_str:
+        return True
+    try:
+        obs_date = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return True
+    return (datetime.now(timezone.utc) - obs_date).days > max_age_days
 
 
 def _load_cache():
@@ -207,6 +235,19 @@ def compute_global_liquidity_factor(force_refresh=False):
     # from Japan; conflating them under one series was inaccurate for a
     # liquidity-focused model.
     china = _FRED_CACHE.get("MYAGM2CNM189N:13")
+    china = china[0] if isinstance(china, tuple) else china
+    china_date = _fred_latest_date("MYAGM2CNM189N")
+    if china and _is_stale(china_date):
+        # The date-guard flagged as PENDING since the first audit: this
+        # series has previously been observed frozen for long stretches.
+        # A frozen series still returns non-None values every cycle, so
+        # without this check a stale YoY figure would silently feed GLF
+        # forever with no degraded flag anywhere -- the one GLF component
+        # that had escaped the "missing/stale -> None" discipline every
+        # other layer in this system follows.
+        print(f"[GLF] China M2 (MYAGM2CNM189N) stale as of {china_date} — excluded, not faked",
+              file=sys.stderr)
+        china = None
     china_yoy = _yoy_chg(china) if china else None
     # Mean/std here are a rough starting estimate (China M2 growth has
     # historically run higher than US/EU, often 8-12%/yr) — NOT yet
