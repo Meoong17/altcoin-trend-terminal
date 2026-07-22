@@ -8,6 +8,7 @@ watchdog.log
 *.pkl
 
 # API caches
+.backfill_cache/
 .repo_stress_cache.json
 .global_liquidity_cache.json
 .fundamentals_cache.json

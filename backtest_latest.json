@@ -1,6 +1,6 @@
 {
-  "run_id": "bt_1784726605",
-  "started_at": "2026-07-22T13:23:25.656393+00:00",
+  "run_id": "bt_1784736985",
+  "started_at": "2026-07-22T16:16:25.746924+00:00",
   "config": {
     "horizon_days": 7,
     "min_days_for_validity": 60
@@ -10,34 +10,34 @@
   "sample_note": "only 8 distinct collection days on record; need >= 60 across multiple regimes before ANY number below should be trusted",
   "walk_forward_folds": [],
   "overall_dry_run_preview": {
-    "n_rows": 3467,
-    "n_with_forward_return": 357,
+    "n_rows": 3478,
+    "n_with_forward_return": 363,
     "horizon_days": 7,
     "trend_score_vs_forward_return": {
-      "spearman": -0.024,
+      "spearman": -0.037,
       "hit_rate_60plus": {
-        "precision": 0.391,
-        "recall": 0.135,
-        "predicted_positive": 46,
-        "actual_positive": 133,
-        "true_positive": 18,
-        "n": 357
+        "precision": 0.438,
+        "recall": 0.131,
+        "predicted_positive": 48,
+        "actual_positive": 160,
+        "true_positive": 21,
+        "n": 363
       },
       "hit_rate_below_40": {
-        "precision": 0.621,
-        "recall": 0.585,
-        "predicted_positive": 211,
-        "actual_positive": 224,
-        "true_positive": 131,
-        "n": 357
+        "precision": 0.542,
+        "recall": 0.571,
+        "predicted_positive": 214,
+        "actual_positive": 203,
+        "true_positive": 116,
+        "n": 363
       }
     },
     "entry_grade_vs_forward_return": null,
     "entry_grade_note": "no rows carried an entry_timing grade in this window",
     "by_regime": {
       "SIDEWAYS": {
-        "n": 357,
-        "spearman": -0.024
+        "n": 363,
+        "spearman": -0.037
       }
     }
   }
