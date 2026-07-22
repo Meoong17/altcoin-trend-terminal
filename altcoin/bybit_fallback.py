@@ -1,5 +1,5 @@
 """
-Bybit fallback — tier 2 of the data-source chain:
+Bybit fallback — tier 3 of the data-source chain:
 
     Binance (primary) -> Bybit (this module) -> CoinStats (last resort)
 

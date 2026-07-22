@@ -1,5 +1,5 @@
 """
-OKX fallback — tier 2 of the data-source chain:
+OKX fallback — tier 2 of the data-source chain (verified wired into analyzer.py):
 
     Binance (primary) -> OKX (this module) -> Bybit -> CoinStats (last resort)
 

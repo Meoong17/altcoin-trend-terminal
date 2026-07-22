@@ -3,6 +3,9 @@
 
 # per-cycle outputs (regenerated; data.json is deployed, not versioned)
 data.json
+collect.log
+watchdog.log
+*.pkl
 
 # API caches
 .repo_stress_cache.json

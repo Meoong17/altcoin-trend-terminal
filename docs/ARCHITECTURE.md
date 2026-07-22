@@ -64,18 +64,19 @@ selected.
 
 ## Data-source fallback chain
 
-Three tiers, in order, each degrading gracefully rather than failing
+Four tiers, in order, each degrading gracefully rather than failing
 silently:
 
 1. **Binance** (primary) — full OHLCV, all metrics.
-2. **Bybit** (keyless fallback) — same tuple shape as Binance klines,
-   fed through the *identical* analysis pipeline. Zero metric
-   degradation; only `data_source` differs.
-3. **CoinStats** (last resort, credit-metered) — price-only. Volume
+2. **OKX** (keyless fallback) — high liquidity comparable to Binance,
+   same tuple shape as Binance klines, fed through the *identical*
+   analysis pipeline. Zero metric degradation; only `data_source` differs.
+3. **Bybit** (keyless fallback) — same contract as OKX, tried next.
+4. **CoinStats** (last resort, credit-metered) — price-only. Volume
    history is unavailable and explicitly flagged in the UI
    (`CS FALLBACK` badge); `compute_performance()` reconstructs implied
    BTC/ETH USD series from price ratios so vs-BTC/vs-ETH figures use
-   the *same formula* as the other two tiers rather than a second,
+   the *same formula* as the other tiers rather than a second,
    subtly different one under the same field name.
 
 ## Honesty conventions (apply everywhere)

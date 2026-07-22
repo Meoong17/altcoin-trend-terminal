@@ -40,8 +40,8 @@ heuristic until it's been validated against real forward returns (see
   rwa, privacy, restaking; every tracked coin gets exactly one sector,
   including coins discovered via `TOP_N`/`EXTEND_TOP` (not just the
   curated groups).
-- **Three-tier data fallback** — Binance (primary) → Bybit (keyless
-  fallback, full metric parity) → CoinStats (last resort, price-only,
+- **Four-tier data fallback** — Binance (primary) → OKX (keyless, high
+  liquidity) → Bybit (keyless) → CoinStats (last resort, price-only,
   credit-metered). A coin never goes silently unavailable if any tier
   can serve it.
 - **Operational alerting** — Telegram alerts on collector exceptions
@@ -118,6 +118,19 @@ Elite candidate — filling this file in is what unlocks full verdicts.
 **Never commit real Telegram/API tokens into this repo.** Secrets go
 in `.env` (gitignored), never in `.py`/`.sh`/`.json` files that get
 committed.
+
+**Never auto-generate values for `catalyst_timing` or `supply_timing`
+from price/volume data.** These two OTF metrics are manual-only by
+design specifically because they need judgment a formula can't
+provide (a real catalyst, a real unlock-risk read) — a script that
+derives them from `trend_score`/`momentum`/`volatility` was found and
+removed during an audit (July 2026): it wrote to the same `"otf"` key
+a genuine analyst uses, so the system treated 387 fabricated entries
+as `provenance: "manual"`, silently defeating the coverage guardrail
+across nearly the whole non-DeFi universe. If you want programmatic
+OTF inputs for coins without full VaF, use the standalone
+`compute_entry_timing()` path (auto/proxy metrics only, honestly
+labeled) — never write invented numbers into `vaf_overrides.json`.
 
 ## Epistemic status — read before trusting any score
 

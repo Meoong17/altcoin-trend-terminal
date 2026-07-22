@@ -482,7 +482,8 @@ function cardBody(sym,c){
   const chg24=closes&&closes.length>2?(closes[closes.length-1]/closes[closes.length-2]-1):null;
   const vr=c.vol_ratio, tapeW=vr!=null?Math.min(100,vr/2*100):0;
   const srcBadge=c.data_source==='coinstats'?' <span class="chip n" style="vertical-align:2px">CS FALLBACK</span>'
-    :c.data_source==='bybit'?' <span class="chip" style="vertical-align:2px;border-color:var(--warn);color:var(--warn)">BYBIT</span>':'';
+    :c.data_source==='bybit'?' <span class="chip" style="vertical-align:2px;border-color:var(--warn);color:var(--warn)">BYBIT</span>'
+    :c.data_source==='okx'?' <span class="chip" style="vertical-align:2px;border-color:var(--liq);color:var(--liq)">OKX</span>':'';
   const drivers=(c.trend_score_detail?.drivers||[]).slice(0,3);
   const vaf=c.vaf;
   return `      <div class="head">
@@ -722,6 +723,7 @@ function render(d,force){
       const badges=[c.vaf?`<span class="chip" style="border-color:var(--vaf)">VaF ${c.vaf.vaf}</span>`:'',
                     c.fundamental_score!=null&&!c.vaf?`<span class="chip">F ${c.fundamental_score}</span>`:'',
                     c.data_source==='bybit'?`<span class="chip" style="color:var(--warn)">BB</span>`:'',
+                    c.data_source==='okx'?`<span class="chip" style="color:var(--liq)">OKX</span>`:'',
                     c.data_source==='coinstats'?`<span class="chip n">CS</span>`:''].join('');
       rows+=`<tr class="mrow" data-sym="${sym}">
         <td>${idx+1}</td>

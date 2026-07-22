@@ -393,14 +393,41 @@ def analyze_multiple_coins(symbols, btc_symbol="BTCUSDT", eth_symbol="ETHUSDT"):
             results[symbol]["data_source"] = "binance"
         time.sleep(pace)
 
-    # ── Tier 2: Bybit (keyless, full OHLCV parity) ──
+    # ── Tier 2: OKX (keyless, full OHLCV parity, high liquidity) ──
+    # Same tuple shape as Binance klines. Was previously written but never
+    # wired into this chain (dead code found in audit) -- now genuinely
+    # active, ahead of Bybit, matching the ordering its own module
+    # docstring always claimed.
+    failed = [s for s, r in results.items() if r.get("status") != "ok"]
+    if failed:
+        from altcoin.okx_fallback import fetch_klines_okx
+        print(f"[Analyzer] Binance failed for {failed} — trying OKX", file=sys.stderr)
+        okx_btc_closes = btc_closes
+        if okx_btc_closes is None:
+            okx_btc = fetch_klines_okx(btc_symbol)
+            okx_btc_closes = [c for _, _, _, c, _ in okx_btc] if okx_btc else None
+        okx_eth_closes = eth_closes
+        if okx_eth_closes is None:
+            okx_eth = fetch_klines_okx(eth_symbol)
+            okx_eth_closes = [c for _, _, _, c, _ in okx_eth] if okx_eth else None
+        for symbol in failed:
+            kl = fetch_klines_okx(symbol)
+            if kl:
+                res = analyze_coin(symbol, btc_closes=okx_btc_closes, klines=kl,
+                                   eth_closes=okx_eth_closes)
+                if res.get("status") == "ok":
+                    res["data_source"] = "okx"
+                    results[symbol] = res
+            time.sleep(0.15)
+
+    # ── Tier 3: Bybit (keyless, full OHLCV parity) ──
     # Same tuple shape as Binance klines, so recovered coins go through
     # the identical analyze_coin pipeline: volume indicators, features,
     # performance vs BTC/ETH -- everything; only the data_source tag differs.
     failed = [s for s, r in results.items() if r.get("status") != "ok"]
     if failed:
         from altcoin.bybit_fallback import fetch_klines_bybit
-        print(f"[Analyzer] Binance failed for {failed} — trying Bybit", file=sys.stderr)
+        print(f"[Analyzer] OKX couldn't recover {failed} — trying Bybit", file=sys.stderr)
         bb_btc_closes = btc_closes
         if bb_btc_closes is None:
             bb_btc = fetch_klines_bybit(btc_symbol)
@@ -419,7 +446,7 @@ def analyze_multiple_coins(symbols, btc_symbol="BTCUSDT", eth_symbol="ETHUSDT"):
                     results[symbol] = res
             time.sleep(0.15)
 
-    # ── Tier 3: CoinStats (price-only, credit-metered — last resort) ──
+    # ── Tier 4: CoinStats (price-only, credit-metered — last resort) ──
     failed = [s for s, r in results.items() if r.get("status") != "ok"]
     if failed:
         from altcoin.coinstats_fallback import analyze_coins_fallback, is_configured
@@ -981,6 +1008,25 @@ if __name__ == "__main__":
     thin = build_pillar("pq", {}, {})
     assert thin["drivers"] == [], "zero coverage -> zero drivers, never a fabricated one"
     print("\u2705 PASS: VaF pillar driver decomposition \u2014 exact identity (Σcontrib = scaled-25), sorted, provenance-tagged, empty on zero coverage\n")
+
+    # OKX fallback tier (okx_fallback.py) -- newly wired in as Tier 2.
+    # Was fully written but never called anywhere (audit finding); now
+    # verified end-to-end: symbol mapping, response parsing, ordering.
+    from altcoin.okx_fallback import rows_to_klines as okx_rows_to_klines, _symbol_okx
+    assert _symbol_okx("BTCUSDT") == "BTC-USDT"
+    assert _symbol_okx("ETHUSDC") == "ETH-USDC"
+    # OKX sends NEWEST-first rows: [ts, o, h, l, c, volBase, volCcy(quote), volCcyQuote, confirm]
+    okx_rows = [
+        ["1720800000000", "101", "105", "99", "104", "12000", "1250000", "1250000", "1"],
+        ["1720713600000", "100", "103", "98", "101", "11000", "1120000", "1120000", "1"],
+        ["bad"],
+        ["1720627200000", "99", "102", "97", "100", "10000", "1000000", "1000000", "1"],
+    ]
+    kl = okx_rows_to_klines(okx_rows)
+    assert len(kl) == 3 and kl[0][0] < kl[1][0] < kl[2][0], "must be oldest-first"
+    assert kl[-1] == (1720800000000, 105.0, 99.0, 104.0, 1250000.0), \
+        "tuple shape (ts, high, low, close, QUOTE volume from volCcy index 6)"
+    print("\u2705 PASS: OKX fallback tier \u2014 symbol mapping, newest-first reversal, quote-volume parsing (now actually wired into the chain, was dead code)\n")
 
     print("ALL SELF-TESTS PASSED — confirms the same code path produces coin-specific,")
     print("distinguishable results for different symbols, not hardcoded output.")
