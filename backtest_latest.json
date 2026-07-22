@@ -1,0 +1,20 @@
+{
+  "run_id": "bt_1784702768",
+  "started_at": "2026-07-22T06:46:08.970712+00:00",
+  "config": {
+    "horizon_days": 7,
+    "min_days_for_validity": 60
+  },
+  "sufficient_sample": false,
+  "sample_days": 2,
+  "sample_note": "only 2 distinct collection days on record; need >= 60 across multiple regimes before ANY number below should be trusted",
+  "walk_forward_folds": [],
+  "overall_dry_run_preview": {
+    "n_rows": 857,
+    "n_with_forward_return": 0,
+    "horizon_days": 7,
+    "entry_grade_vs_forward_return": null,
+    "entry_grade_note": "no rows carried an entry_timing grade in this window",
+    "by_regime": {}
+  }
+}

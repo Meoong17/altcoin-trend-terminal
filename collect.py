@@ -36,7 +36,7 @@ from altcoin.analyzer import (analyze_multiple_coins, discover_top_symbols, comp
 from altcoin.features import score_components
 from altcoin.regime import classify_regime
 from altcoin.history import (append_cycle, stats as history_stats,
-                             regime_streak, macro_series)
+                             regime_streak, macro_series, get_model_version)
 from altcoin.regime import apply_hysteresis
 from altcoin.correlation import concentration_warning
 from altcoin.alerts import check_staleness
@@ -467,10 +467,31 @@ def main():
         json.dump(output, f, indent=2, default=str)
 
     print(f"\n[Collect] Wrote {DATA_OUT}")
+    model_version = get_model_version()
     rows = append_cycle(coins_output, {**output["macro"], "market": market},
-                        universe, regime)
+                        universe, regime, model_version=model_version)
     hs = history_stats()
-    print(f"[Collect] History: +{rows} rows -> {hs['rows']} rows across {hs['days']} days")
+    print(f"[Collect] History: +{rows} rows -> {hs['rows']} rows across {hs['days']} days "
+          f"(model_version={model_version})")
+
+    # ── Evaluation pipeline (background, never touches production scoring) ──
+    # Runs every cycle by design: builds the walk-forward evaluation dataset
+    # continuously with zero manual intervention, exactly the pattern this
+    # was designed for. sufficient_sample stays False and is reported
+    # honestly until there's really enough history -- automating the RUN
+    # never automates the CONCLUSION.
+    try:
+        from altcoin.backtest import run_backtest
+        bt = run_backtest(write=True)
+        print(f"[Backtest] sample_days={bt['sample_days']} "
+              f"sufficient_sample={bt['sufficient_sample']} "
+              f"folds={len(bt['walk_forward_folds'])}")
+        with open(os.path.join(os.path.dirname(DATA_OUT), "backtest_latest.json"), "w") as f:
+            json.dump(bt, f, indent=2, default=str)
+    except Exception as e:
+        print(f"[Backtest] evaluation pipeline failed (production unaffected): {e}",
+              file=sys.stderr)
+
     print(f"\n{'='*60}")
     print("SUMMARY")
     print(f"{'='*60}")

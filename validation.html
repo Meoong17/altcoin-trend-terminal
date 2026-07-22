@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Model Validation — Altcoin Trend Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0D13;--panel:#121722;--panel2:#0D1119;--ink:#0A0D13;--line:#202836;--line2:#2A3444;
+  --text:#E2E7F0;--muted:#758092;--dim:#414B5E;--up:#34D98B;--down:#F26B5C;--warn:#E8B44F;--liq:#53C8EC;--vaf:#9D7BEA;
+  --mono:'JetBrains Mono',monospace;--disp:'Space Grotesk',sans-serif;--r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.55;min-height:100vh}
+.wrap{max-width:900px;margin:0 auto;padding:24px 18px 56px}
+header{margin-bottom:22px}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--vaf);text-transform:uppercase}
+h1{font-family:var(--disp);font-size:22px;font-weight:700;margin:4px 0 8px}
+.sub{color:var(--muted);font-size:12px;max-width:640px;line-height:1.6}
+.backlink{display:inline-block;margin-top:10px;color:var(--liq);font-size:11px;text-decoration:none;border-bottom:1px dotted var(--liq)}
+
+#gate{margin:20px 0;padding:16px 18px;border-radius:var(--r);border:1px solid var(--line)}
+#gate.insufficient{background:rgba(232,180,79,.06);border-color:var(--warn)}
+#gate.sufficient{background:rgba(52,217,139,.06);border-color:var(--up)}
+#gate .gt{font-family:var(--disp);font-weight:700;font-size:16px;margin-bottom:6px}
+#gate.insufficient .gt{color:var(--warn)}
+#gate.sufficient .gt{color:var(--up)}
+#gate .gn{color:var(--muted);font-size:11.5px;line-height:1.6}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0}
+.stat{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:var(--r);padding:14px 16px}
+.stat .k{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.stat .v{font-family:var(--disp);font-weight:700;font-size:24px}
+.stat .note{font-size:9.5px;color:var(--dim);margin-top:4px}
+
+section{margin:26px 0}
+h2{font-family:var(--disp);font-size:14px;font-weight:700;margin-bottom:4px;
+  padding-bottom:8px;border-bottom:1px solid var(--line)}
+h2 .tag{float:right;font-size:9.5px;color:var(--muted);font-weight:400}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:11.5px}
+th{text-align:left;font-size:9px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;
+  padding:6px 8px;border-bottom:1px solid var(--line2)}
+td{padding:7px 8px;border-bottom:1px solid var(--line)}
+td.num{text-align:right;font-family:var(--mono)}
+.pos{color:var(--up)}.neg{color:var(--down)}.neu{color:var(--muted)}
+
+.foldrow{display:flex;gap:14px;padding:10px 0;border-bottom:1px solid var(--line);font-size:11.5px;flex-wrap:wrap}
+.foldrow b{color:var(--liq)}
+.empty{color:var(--muted);padding:24px;text-align:center;font-size:12px;border:1px dashed var(--line);border-radius:var(--r)}
+footer{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);color:var(--dim);font-size:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">ALTCOIN TREND TERMINAL · EVALUATION PIPELINE</span>
+    <h1>Model Validation</h1>
+    <p class="sub">Diagnostic view of the backtest harness — walk-forward folds, Spearman rank correlation between scores and forward returns, and grade precision/recall. This page never feeds the coin dashboard and the coin dashboard never feeds this page: production scoring and evaluation are fully separate pipelines.</p>
+    <a class="backlink" href="index.html">← back to coin dashboard</a>
+  </header>
+
+  <div id="gate">
+    <div class="gt" id="gate-title">Loading…</div>
+    <div class="gn" id="gate-note"></div>
+  </div>
+
+  <div class="grid" id="stats"></div>
+
+  <section>
+    <h2>Walk-Forward Folds <span class="tag">expanding window — train never sees its own test data</span></h2>
+    <div id="folds"></div>
+  </section>
+
+  <section>
+    <h2>Trend Score vs Forward Return, by Regime <span class="tag">Spearman rank correlation</span></h2>
+    <table id="regime-table"><thead><tr><th>Regime</th><th style="text-align:right">Samples</th><th style="text-align:right">Spearman IC</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section>
+    <h2>Entry Timing Grade vs Outcome <span class="tag">A+/A treated as predicted-positive</span></h2>
+    <div id="grade-pr"></div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+function pctOrDash(v,d=1){return v==null?'—':(v*100).toFixed(d)+'%';}
+function numOrDash(v,d=3){return v==null?'—':v.toFixed(d);}
+
+async function load(){
+  try{
+    const r = await fetch('backtest_latest.json?t='+Date.now());
+    if(!r.ok) throw new Error('backtest_latest.json not found — has collect.py run at least once with the evaluation pipeline enabled?');
+    render(await r.json());
+  }catch(e){
+    $('gate').className='insufficient';
+    $('gate-title').textContent='No evaluation data yet';
+    $('gate-note').textContent=e.message;
+  }
+}
+
+function render(bt){
+  const suff = bt.sufficient_sample;
+  $('gate').className = suff ? 'sufficient' : 'insufficient';
+  $('gate-title').textContent = suff
+    ? '✓ Sufficient sample — numbers below are meaningful'
+    : '⚠ Insufficient sample — every number below is a preview, not a conclusion';
+  $('gate-note').textContent = bt.sample_note || '';
+
+  const ov = bt.overall_dry_run_preview || {};
+  $('stats').innerHTML = `
+    <div class="stat"><div class="k">History</div><div class="v">${bt.sample_days}</div><div class="note">distinct collection days</div></div>
+    <div class="stat"><div class="k">Walk-Forward</div><div class="v">${(bt.walk_forward_folds||[]).length}</div><div class="note">folds produced</div></div>
+    <div class="stat"><div class="k">Coverage</div><div class="v">${ov.n_rows?pctOrDash(ov.n_with_forward_return/ov.n_rows,0):'—'}</div><div class="note">${ov.n_with_forward_return??0}/${ov.n_rows??0} rows have a forward return</div></div>
+    <div class="stat"><div class="k">Sufficient Sample</div><div class="v" style="color:${suff?'var(--up)':'var(--warn)'}">${suff?'YES':'NO'}</div><div class="note">min. ${bt.config?.min_days_for_validity??60} days required</div></div>
+  `;
+
+  const folds = bt.walk_forward_folds||[];
+  $('folds').innerHTML = folds.length ? folds.map((f,i)=>{
+    const sp = f.trend_score_vs_forward_return?.spearman;
+    return `<div class="foldrow"><b>Fold ${i+1}</b>
+      <span>train ${f.train_days}d · test ${f.test_days}d</span>
+      <span>${f.test_range?f.test_range.join(' → '):''}</span>
+      <span>n=${f.n_with_forward_return}</span>
+      <span>Spearman IC: <b>${numOrDash(sp)}</b></span></div>`;
+  }).join('') : '<div class="empty">No walk-forward folds yet — needs more history before even one honest train/test split exists.</div>';
+
+  const byRegime = ov.by_regime || {};
+  const rtbody = document.querySelector('#regime-table tbody');
+  const regimeKeys = Object.keys(byRegime);
+  rtbody.innerHTML = regimeKeys.length ? regimeKeys.map(reg=>{
+    const m = byRegime[reg];
+    return `<tr><td>${reg}</td><td class="num">${m.n}</td><td class="num">${numOrDash(m.spearman)}</td></tr>`;
+  }).join('') : '<tr><td colspan="3" class="empty" style="border:none">No regime-tagged samples with a forward return yet.</td></tr>';
+
+  const gpr = ov.entry_grade_vs_forward_return;
+  $('grade-pr').innerHTML = gpr ? `
+    <table><tbody>
+      <tr><th>Predicted positive (A+/A)</th><td class="num">${gpr.predicted_positive}</td></tr>
+      <tr><th>Actually positive (return &gt; 0)</th><td class="num">${gpr.actual_positive}</td></tr>
+      <tr><th>Precision</th><td class="num">${pctOrDash(gpr.precision)}</td></tr>
+      <tr><th>Recall</th><td class="num">${pctOrDash(gpr.recall)}</td></tr>
+      <tr><th>Sample size</th><td class="num">${gpr.n}</td></tr>
+    </tbody></table>` : `<div class="empty">${ov.entry_grade_note || 'No entry-grade data available yet for this window.'}</div>`;
+
+  $('foot').textContent = `run_id: ${bt.run_id} · generated ${bt.started_at} · research tooling — not trading advice`;
+}
+load();
+</script>
+</body>
+</html>

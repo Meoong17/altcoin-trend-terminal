@@ -1041,6 +1041,38 @@ if __name__ == "__main__":
     assert _is_stale("not-a-date") is True, "unparseable date -> stale, never a crash"
     print("\u2705 PASS: GLF China M2 date-guard \u2014 frozen FRED series now excluded, not silently used as current\n")
 
+    # Model versioning + regime denormalization (history.py)
+    from altcoin.history import get_model_version, append_cycle
+    import tempfile as _tf, os as _osv, subprocess as _spv
+
+    # Non-git directory -> honest "unknown", never a guessed/fabricated hash
+    nongit = _tf.mkdtemp()
+    assert get_model_version(repo_dir=nongit) == "unknown"
+
+    # Real git repo -> actual short hash, matches `git rev-parse --short HEAD`
+    gitdir = _tf.mkdtemp()
+    _spv.run(["git", "init", "-q"], cwd=gitdir)
+    _spv.run(["git", "config", "user.email", "t@t.com"], cwd=gitdir)
+    _spv.run(["git", "config", "user.name", "t"], cwd=gitdir)
+    open(_osv.path.join(gitdir, "f"), "w").write("x")
+    _spv.run(["git", "add", "f"], cwd=gitdir)
+    _spv.run(["git", "commit", "-qm", "init"], cwd=gitdir)
+    expected = _spv.run(["git", "rev-parse", "--short", "HEAD"], cwd=gitdir,
+                        capture_output=True, text=True).stdout.strip()
+    assert get_model_version(repo_dir=gitdir) == expected
+
+    # append_cycle stamps market_regime + model_version into EVERY stored
+    # coin payload -- queryable from snapshots alone, no join to macro needed
+    tdb = _osv.path.join(_tf.mkdtemp(), "ver_test.db")
+    append_cycle({"XUSDT": {"status": "ok", "trend_score": 70}},
+                {"glf_score": 60}, {"mode": "test"}, {"state": "BULL_TREND"},
+                path=tdb, today="2026-07-22", model_version="abc1234")
+    import json as _jsv, sqlite3 as _sqv
+    row = _sqv.connect(tdb).execute("SELECT payload FROM snapshots").fetchone()[0]
+    stored = _jsv.loads(row)
+    assert stored["market_regime"] == "BULL_TREND" and stored["model_version"] == "abc1234"
+    print("\u2705 PASS: model_version (git-hash, honest 'unknown' fallback) + market_regime denormalized into every snapshot\n")
+
     print("ALL SELF-TESTS PASSED — confirms the same code path produces coin-specific,")
     print("distinguishable results for different symbols, not hardcoded output.")
 

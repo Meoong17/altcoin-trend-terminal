@@ -53,21 +53,57 @@ def _conn(path=None):
     return c
 
 
-def append_cycle(coins, macro, universe, regime, path=None, today=None):
+def get_model_version(repo_dir=None):
+    """
+    Short git commit hash of the current codebase, used to stamp every
+    snapshot -- automatic, zero-maintenance versioning. A manually-kept
+    version string (e.g. "v1.8") relies on remembering to bump it every
+    time a scoring formula changes; a git hash can't be forgotten,
+    because it changes the moment the code that produced the score
+    changes, with no discipline required.
+
+    Falls back to "unknown" (never fabricated) if the directory isn't a
+    git repo -- e.g. a deployment that stripped .git for size.
+    """
+    import subprocess
+    repo_dir = repo_dir or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        out = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+                             cwd=repo_dir, capture_output=True, text=True, timeout=5)
+        h = out.stdout.strip()
+        return h if out.returncode == 0 and h else "unknown"
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+
+
+def append_cycle(coins, macro, universe, regime, path=None, today=None, model_version=None):
     """
     Persist one collector cycle. `coins` is the {symbol: result} dict
     (only status=ok rows are stored), `macro`/`universe`/`regime` are the
     same dicts that go into data.json. Returns rows written.
+
+    Each stored coin payload is stamped with `market_regime` and
+    `model_version` -- denormalized copies of data that's technically
+    derivable by joining snapshots<->macro by date, but stamping them
+    directly means a backtest query can group by regime or scoring
+    version from the snapshots table alone, with no join, and a version
+    change is visible in the row itself rather than only inferable from
+    when scoring logic happened to change in the codebase.
     """
     today = today or datetime.now(timezone.utc).date().isoformat()
+    regime_state = (regime or {}).get("state")
     c = _conn(path)
     n = 0
     with c:
         for symbol, res in (coins or {}).items():
             if res.get("status") != "ok":
                 continue
+            stamped = dict(res)
+            stamped["market_regime"] = regime_state
+            if model_version:
+                stamped["model_version"] = model_version
             c.execute("INSERT OR REPLACE INTO snapshots VALUES (?,?,?)",
-                      (today, symbol, json.dumps(res, separators=(",", ":"))))
+                      (today, symbol, json.dumps(stamped, separators=(",", ":"))))
             n += 1
         c.execute("INSERT OR REPLACE INTO universe VALUES (?,?,?)",
                   (today, (universe or {}).get("mode"),
