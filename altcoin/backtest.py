@@ -223,20 +223,41 @@ def build_rows(snap_by_symbol_date, dates_sorted, regime_by_date, horizon_days, 
 
 
 def run_backtest(horizon_days=DEFAULT_HORIZON_DAYS,
-                 min_days_for_validity=MIN_DAYS_FOR_VALIDITY, path=None, write=True):
+                 min_days_for_validity=MIN_DAYS_FOR_VALIDITY, path=None, write=True,
+                 min_known_regimes=2, min_rows_per_regime=30):
     """
     Full dry-run-or-real backtest against whatever history.db currently
     holds. Always returns a report; writes it to backtest_runs when
     write=True. `sufficient_sample` is the single field a caller MUST
     check before treating any number in this report as meaningful.
+
+    sufficient_sample requires BOTH:
+      1. total days >= min_days_for_validity
+      2. at least `min_known_regimes` distinct KNOWN regimes (excluding
+         UNKNOWN/None) each with >= `min_rows_per_regime` forward-return
+         samples.
+
+    Requirement 2 was added after the first real run at 257 days came
+    back "sufficient" by day-count alone while 87% of its samples were
+    regime=UNKNOWN (from technical-only backfill, which never
+    reconstructs regime) and the rest were entirely SIDEWAYS -- a
+    trend-detection score tested almost exclusively in a regime with no
+    trend to detect, with zero BULL/BEAR/RISK_OFF representation, is not
+    a meaningful validation regardless of how many total days it spans.
+    Day-count alone was a real gap in this gate; it is not anymore.
     """
     snap_by_symbol_date, dates_sorted, regime_by_date = _load_all(path)
     n_days = len(dates_sorted)
-    sufficient = n_days >= min_days_for_validity
+    days_ok = n_days >= min_days_for_validity
 
     splits = walk_forward_splits(dates_sorted)
     all_rows = build_rows(snap_by_symbol_date, dates_sorted, regime_by_date, horizon_days)
     overall = evaluate_rows(all_rows, horizon_days)
+
+    known_regimes = {reg: m for reg, m in overall.get("by_regime", {}).items()
+                     if reg not in (None, "UNKNOWN") and m.get("n", 0) >= min_rows_per_regime}
+    regimes_ok = len(known_regimes) >= min_known_regimes
+    sufficient = days_ok and regimes_ok
 
     fold_reports = []
     for train_dates, test_dates in splits:
@@ -254,12 +275,19 @@ def run_backtest(horizon_days=DEFAULT_HORIZON_DAYS,
         "config": {"horizon_days": horizon_days, "min_days_for_validity": min_days_for_validity},
         "sufficient_sample": sufficient,
         "sample_days": n_days,
-        "sample_note": (f"only {n_days} distinct collection days on record; "
-                        f"need >= {min_days_for_validity} across multiple regimes "
-                        f"before ANY number below should be trusted"
-                        if not sufficient else
-                        f"{n_days} days on record, meets the minimum -- still confirm "
-                        f"multiple regimes are represented before trusting a single fold"),
+        "sample_note": (
+            f"{n_days} days and {len(known_regimes)} known regimes (\u2265{min_rows_per_regime} "
+            f"samples each) \u2014 meets both bars." if sufficient else
+            f"only {n_days}/{min_days_for_validity} days on record; day-count alone is not enough."
+            if not days_ok else
+            f"{n_days} days meets the day-count bar, but only {len(known_regimes)}/{min_known_regimes} "
+            f"known regimes have \u2265{min_rows_per_regime} samples (regimes seen: "
+            f"{ {r: m['n'] for r, m in overall.get('by_regime', {}).items()} }) \u2014 "
+            f"a trend score tested in one regime (often UNKNOWN from backfill, or SIDEWAYS where "
+            f"there's no trend to detect) is not yet a meaningful validation, however many days it spans."
+        ),
+        "gates": {"days_ok": days_ok, "regimes_ok": regimes_ok,
+                 "known_regimes": {r: m["n"] for r, m in known_regimes.items()}},
         "walk_forward_folds": fold_reports,
         "overall_dry_run_preview": overall,
     }

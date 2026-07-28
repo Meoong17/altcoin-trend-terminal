@@ -119,12 +119,44 @@ _STABLE_BASES = {
 }
 _LEVERAGED_SUFFIXES = ("UPUSDT", "DOWNUSDT", "BULLUSDT", "BEARUSDT")
 
+# bStocks: Binance's tokenized US equities/ETFs (launched June 2026),
+# traded on the SAME spot market/API as crypto -- EXTEND_TOP/TOP_N
+# volume-ranked discovery has no way to tell "NVDAB" (tokenized Nvidia
+# stock) from a genuine altcoin ticker without an explicit exclude
+# list. These move on equity-market dynamics (earnings, Fed decisions,
+# US market hours), not crypto market structure -- scoring them with a
+# crypto trend model compares a different asset class, not just a
+# noisy coin. Base-asset-only (before "USDT"), confirmed from Binance's
+# own bStocks launch announcements. Binance has signaled the catalog
+# may grow toward 7,000+ underlying stocks/ETFs, so this list WILL need
+# periodic updates -- see _looks_like_unlisted_bstock() below for a
+# warning-only defense against ones not added here yet.
+_BSTOCKS_BASES = {
+    "NVDAB", "TSLAB", "CRCLB", "SNDKB", "SPCXB", "MUB",           # initial launch batch
+    "GOOGLB", "IBMB", "INTCB", "QQQB", "MSTRB", "SOXLB", "EWYB",  # observed in later expansion
+}
+
+
+def _looks_like_unlisted_bstock(base):
+    """
+    Defensive heuristic for a bStock that launched after this list was
+    last updated: a short uppercase ticker ending in a literal "B"
+    (the observed bStocks naming convention). This NEVER auto-excludes
+    anything -- a genuine new altcoin could legitimately end in "B" --
+    it only emits a stderr warning so a human notices and updates
+    _BSTOCKS_BASES, instead of the universe silently accumulating
+    tokenized equities cycle after cycle unnoticed.
+    """
+    import re
+    return bool(re.fullmatch(r"[A-Z]{2,6}B", base)) and base not in _BSTOCKS_BASES
+
 
 def filter_alt_usdt_pairs(tickers):
     """
     Pure filter over Binance /ticker/24hr rows -> altcoin USDT symbols
     sorted by 24h quote volume (desc). Excludes BTCUSDT (it's the
-    benchmark, not an alt), stablecoin pairs, and leveraged tokens.
+    benchmark, not an alt), stablecoin pairs, leveraged tokens, and
+    bStocks (tokenized equities -- a different asset class entirely).
     Kept side-effect-free so the offline self-test can exercise it.
     """
     out = []
@@ -134,8 +166,25 @@ def filter_alt_usdt_pairs(tickers):
             continue
         if sym.endswith(_LEVERAGED_SUFFIXES):
             continue
-        if sym[:-4] in _STABLE_BASES:
+        base = sym[:-4]
+        if base in _STABLE_BASES:
             continue
+        if base in _BSTOCKS_BASES:
+            continue
+        if not base.isascii() or not base.isalnum():
+            # Guards against anomalous listings/encoding artifacts (e.g. a
+            # symbol containing non-Latin characters) -- a legitimate
+            # ticker on Binance is always plain alphanumeric ASCII, so
+            # anything else is either noise or a promotional listing
+            # that doesn't belong in a curated altcoin trend universe.
+            print(f"[filter] {sym}: non-standard ticker characters, excluded",
+                  file=sys.stderr)
+            continue
+        if _looks_like_unlisted_bstock(base):
+            print(f"[filter] {sym}: matches bStocks naming pattern but isn't in "
+                  f"_BSTOCKS_BASES yet -- kept in universe for now, please verify "
+                  f"and add to the exclude list if it's a tokenized equity",
+                  file=sys.stderr)
         try:
             qv = float(t.get("quoteVolume", 0))
         except (TypeError, ValueError):
@@ -1144,6 +1193,81 @@ if __name__ == "__main__":
     c4.close()
     assert "2026-01-05" in existing, "the live-collected date must be visible to the guard check"
     print("\u2705 PASS: backfill \u2014 ms/microsecond normalization, CSV parsing, macro excluded from backfilled rows, existing-date guard verified\n")
+
+    # Regime-diversity gate (fix for the real-world gap found at 257 days:
+    # day-count alone said "sufficient" while 87% of samples were regime
+    # UNKNOWN and the rest all SIDEWAYS -- zero BULL/BEAR/RISK_OFF)
+    import tempfile as _tfg, os as _osg
+    from altcoin.history import append_cycle as _acg
+    from altcoin.backtest import run_backtest as _rbg
+
+    # Case A: enough days, but only ONE known regime (SIDEWAYS) -- must NOT be sufficient
+    tdb_a = _osg.path.join(_tfg.mkdtemp(), "regime_a.db")
+    for day in range(65):
+        d = f"2026-{1+day//28:02d}-{1+day%28:02d}"
+        px = 100.0 * (1 + 0.001*day)
+        _acg({"XUSDT": {"status": "ok", "latest_price": px, "trend_score": 60}},
+            {}, {"mode": "test"}, {"state": "SIDEWAYS"}, path=tdb_a, today=d)
+    rep_a = _rbg(horizon_days=5, min_days_for_validity=60, path=tdb_a, write=False)
+    assert rep_a["gates"]["days_ok"] is True
+    assert rep_a["gates"]["regimes_ok"] is False, "one regime alone must fail the diversity gate"
+    assert rep_a["sufficient_sample"] is False
+    print(f"Case A (65 days, all SIDEWAYS): sufficient={rep_a['sufficient_sample']}, gates={rep_a['gates']}")
+
+    # Case B: enough days AND two well-represented known regimes -- must BE sufficient
+    tdb_b = _osg.path.join(_tfg.mkdtemp(), "regime_b.db")
+    for day in range(80):  # 40+40 so each regime still clears >=30 AFTER the
+                           # 5-day horizon lookahead trims the tail of each chunk
+        d = f"2026-{1+day//28:02d}-{1+day%28:02d}"
+        px = 100.0 * (1 + 0.001*day)
+        regime = "BULL_TREND" if day < 40 else "SIDEWAYS"
+        _acg({"XUSDT": {"status": "ok", "latest_price": px, "trend_score": 60}},
+            {}, {"mode": "test"}, {"state": regime}, path=tdb_b, today=d)
+    rep_b = _rbg(horizon_days=5, min_days_for_validity=60, path=tdb_b, write=False)
+    assert rep_b["gates"]["regimes_ok"] is True, "two well-sampled regimes must pass the diversity gate"
+    assert rep_b["sufficient_sample"] is True
+    print(f"Case B (65 days, BULL+SIDEWAYS): sufficient={rep_b['sufficient_sample']}, gates={rep_b['gates']}")
+
+    print("\u2705 PASS: regime-diversity gate \u2014 day-count alone can no longer falsely claim sufficient_sample\n")
+
+    # bStocks (tokenized equity) exclusion from altcoin discovery --
+    # Binance's June 2026 tokenized-stocks product trades on the SAME
+    # spot API as crypto, so EXTEND_TOP/TOP_N volume-ranking would
+    # otherwise silently pull in "NVDAB" (tokenized Nvidia) etc. as if
+    # it were an altcoin
+    from altcoin.analyzer import filter_alt_usdt_pairs, _looks_like_unlisted_bstock
+    fake_tickers = [
+        {"symbol": "SOLUSDT", "quoteVolume": "500000000"},       # genuine alt -> keep
+        {"symbol": "NVDABUSDT", "quoteVolume": "900000000"},     # tokenized Nvidia -> exclude
+        {"symbol": "TSLABUSDT", "quoteVolume": "800000000"},     # tokenized Tesla -> exclude
+        {"symbol": "GOOGLBUSDT", "quoteVolume": "700000000"},    # tokenized Alphabet -> exclude
+        {"symbol": "BTCUSDT", "quoteVolume": "999999999"},       # benchmark -> exclude
+        {"symbol": "USDCUSDT", "quoteVolume": "100000000"},      # stablecoin -> exclude
+        {"symbol": "ETHUPUSDT", "quoteVolume": "600000000"},     # leveraged -> exclude
+    ]
+    result = filter_alt_usdt_pairs(fake_tickers)
+    assert result == ["SOLUSDT"], f"only the genuine altcoin must survive, got {result}"
+    assert "NVDABUSDT" not in result and "TSLABUSDT" not in result and "GOOGLBUSDT" not in result
+
+    # Defensive heuristic: warns on an unlisted-but-pattern-matching symbol,
+    # NEVER silently excludes it (a genuine new altcoin could end in "B")
+    assert _looks_like_unlisted_bstock("AAPLB") is True, "unrecognized bStock-shaped ticker should be flagged"
+    assert _looks_like_unlisted_bstock("NVDAB") is False, "already-known bStock must not re-warn"
+    assert _looks_like_unlisted_bstock("SOLB") is True or _looks_like_unlisted_bstock("SOLB") is False
+    # a real coin that happens to end in B must still be KEPT (warning-only, not excluded)
+    fake_new = [{"symbol": "AAPLBUSDT", "quoteVolume": "400000000"}]
+    result2 = filter_alt_usdt_pairs(fake_new)
+    assert result2 == ["AAPLBUSDT"], "unrecognized pattern must warn, not silently drop -- avoids a false-positive exclusion"
+    print("\u2705 PASS: bStocks (tokenized equity) exclusion \u2014 known list filtered, genuine alts kept, unknown patterns warn instead of silently dropping\n")
+
+    # General non-ASCII/anomalous ticker guard (fix for the "\u5e01\u5b89\u4eba\u751f" /
+    # Chinese-text symbol found in production data.json -- not the
+    # bStocks pattern, a different anomaly entirely, guarded generically)
+    weird = [{"symbol": "\u5e01\u5b89\u4eba\u751fUSDT", "quoteVolume": "999999999"},
+             {"symbol": "SOLUSDT", "quoteVolume": "500000000"}]
+    result3 = filter_alt_usdt_pairs(weird)
+    assert result3 == ["SOLUSDT"], f"non-ASCII/non-alphanumeric ticker must be excluded, got {result3}"
+    print("\u2705 PASS: non-standard ticker guard \u2014 anomalous/non-ASCII symbols excluded regardless of volume\n")
 
     print("ALL SELF-TESTS PASSED — confirms the same code path produces coin-specific,")
     print("distinguishable results for different symbols, not hardcoded output.")
