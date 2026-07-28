@@ -22,9 +22,9 @@
   --shadow-hover:0 2px 4px rgba(0,0,0,.5),0 16px 40px -16px rgba(0,0,0,.7),0 0 0 1px var(--line2);
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html{scrollbar-color:var(--dim) var(--bg)}
+html{scrollbar-color:var(--dim) var(--bg);overflow-x:hidden}
 body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.55;
-  min-height:100vh;font-variant-numeric:tabular-nums;
+  min-height:100vh;font-variant-numeric:tabular-nums;overflow-x:hidden;
   background-image:radial-gradient(1200px 500px at 50% -220px,rgba(83,200,236,.07),transparent 65%)}
 .wrap{max-width:1160px;margin:0 auto;padding:0 18px 56px}
 ::selection{background:rgba(83,200,236,.25)}
@@ -97,7 +97,7 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 /* ── coin grid & cards ── */
 #coins{display:grid;grid-template-columns:repeat(auto-fill,minmax(295px,1fr));gap:10px}
 .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
-  border-radius:var(--r);padding:12px 13px;box-shadow:var(--shadow);
+  border-radius:var(--r);padding:12px 13px;box-shadow:var(--shadow);min-width:0;
   transition:transform .18s ease,box-shadow .18s ease,border-color .18s}
 .card:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover)}
 .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
@@ -110,7 +110,7 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 .scorerow b{font-family:var(--disp);font-size:27px;font-weight:700;line-height:1}
 .sl{color:var(--muted);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;line-height:1.35}
 .spark{margin-left:auto}
-.sbar{height:4px;border-radius:3px;background:var(--panel2);border:1px solid var(--line);margin:7px 0 9px;overflow:hidden}
+.sbar{height:4px;border-radius:3px;background:var(--panel2);border:1px solid var(--line);margin:7px 0 3px;overflow:hidden}
 .sbar i{display:block;height:100%;border-radius:3px;transition:width .7s cubic-bezier(.22,1,.36,1)}
 .rows{display:grid;grid-template-columns:repeat(3,1fr);gap:5px 10px;font-size:11.5px}
 .rows .k{color:var(--muted);font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;display:block}
@@ -155,7 +155,17 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
   color:var(--text);font-size:10.5px;line-height:1.55;letter-spacing:0;text-transform:none;font-weight:400;
   box-shadow:var(--shadow-hover);opacity:0;transform:translateY(4px);pointer-events:none;
   transition:opacity .15s,transform .15s;white-space:normal}
-[data-tip]:hover::after,[data-tip]:focus::after{opacity:1;transform:none}
+[data-tip]:hover::after,[data-tip]:focus::after,[data-tip].tip-open::after{opacity:1;transform:none}
+/* Touch devices have no hover -- tapping toggles .tip-open via JS (see
+   bindTapTooltips()) so the same explanations that work on desktop
+   hover are actually reachable on mobile, not silently invisible. */
+
+/* Compact permanent captions under the 3 elements laypeople most need
+   context for without having to discover a tooltip at all: trend
+   score, entry-timing grade, VaF verdict. Kept to one short line so
+   they don't meaningfully add to card height. */
+.metric-cap{font-size:8.3px;line-height:1.35;color:var(--muted);margin-top:2px;max-width:200px}
+.metric-cap:last-of-type{margin-bottom:6px}
 
 /* ── how-to-read drawer ── */
 #howto{position:fixed;inset:0;z-index:100;display:none}
@@ -188,7 +198,10 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
   .rows{grid-template-columns:repeat(2,1fr)}
   .hd{flex-wrap:wrap;padding:12px 16px}
   #hd-season{display:none!important}
-  [data-tip]::after{width:190px}
+  [data-tip]::after{width:min(190px,72vw)}
+  #coins{grid-template-columns:1fr}
+  .metric-cap{max-width:100%}
+  .card{padding:11px 12px}
 }
 
 /* ── quick stats bar ── */
@@ -361,44 +374,49 @@ tr.detail .inner{padding:14px 16px;border-bottom:1px solid var(--line2)}
   </footer>
 </div>
 
-<!-- ── How to Read drawer ── -->
-<div id="howto" role="dialog" aria-modal="true" aria-label="How to read this terminal">
+<!-- ── How to Use drawer ── -->
+<div id="howto" role="dialog" aria-modal="true" aria-label="How to use this terminal">
   <div class="scrim" data-close></div>
   <div class="panel">
     <button id="howto-close" data-close aria-label="Close">✕</button>
-    <h2>How to read this terminal</h2>
-    <p class="sub">Every number below is also explained inline — hover any dotted label.</p>
+    <h2>How to use this terminal</h2>
+    <p class="sub">This terminal helps you prioritize which altcoins to research further — it does not make buy/sell decisions for you. Use the workflow below.</p>
 
-    <h3>Trend Score (0–100)</h3>
-    <p>A weighted technical composite per coin: <b>breakout 30%</b> (proximity to 30d high, RSI in the 55–68 momentum zone, volume expansion, ATR expansion), <b>relative strength vs BTC 30%</b>, <b>trend consistency 20%</b> (green-day ratio, EMA20/50 slope), <b>volatility compression 10%</b>, <b>macro 10%</b>. The small chips under the score are its <b>drivers</b> — each chip's number is that component's push above or below neutral, and they sum to score − 50.</p>
-    <p>It is a transparent heuristic, not a backtested model. Green ≥60, amber 40–60, red &lt;40.</p>
+    <h3>1. Scan the macro bar first</h3>
+    <p>Before looking at individual coins, check the top bar: <b>GLF</b> (global liquidity), <b>Repo Stress</b>, and <b>Market Regime</b>. Altcoin longs historically work best when regime is <b>BULL TREND</b> with GLF above 60. If GLF is below 40 or regime is CRISIS, prioritize capital preservation over picking longs.</p>
 
-    <h3>Macro strip</h3>
-    <p><b>GLF</b> summarizes global liquidity: central-bank balance sheets, US M2, Treasury account, reverse repo and the dollar, blended as z-scores. <b>Repo Stress</b> watches the SOFR−EFFR spread — the plumbing of dollar funding. <b>Market Regime</b> classifies BTC's state with fixed rules; altcoin longs historically work best in BULL TREND with GLF above 60.</p>
+    <h3>2. Filter coins by score and entry timing</h3>
+    <p>Use the sort headers to rank by <b>Trend Score</b> (technical strength 0–100) and <b>Entry Timing</b> grade (A+ to Avoid). A practical filter sequence:</p>
+    <p>• <b>Trend Score ≥ 60</b> (green) — technicals are aligned.<br>
+    • <b>Entry Timing A+ or A</b> — the current setup is actionable.<br>
+    • <b>Composite</b> blends technical + fundamental for a single view.</p>
+    <p>Coins that pass both filters are worth deeper research. Scores below 40 (red) with Avoid grade are not actionable right now.</p>
 
-    <h3>Altcoin Season Index</h3>
-    <p>The share of tracked coins beating BTC over 90 days. Above <b>75</b> = altcoin season; below <b>25</b> = bitcoin season. It measures <b>breadth</b>, not magnitude — a few giant winners can't fake it.</p>
+    <h3>3. Understand the score's building blocks</h3>
+    <p>Click any coin row or hover the dotted labels. Each trend score has <b>drivers</b> — the small chips under the number show which components (breakout, relative strength vs BTC, trend consistency, volatility compression, macro) are pulling the score up or down. A coin at 65 driven by breakout+volume is different from a 65 driven by trend consistency alone. Use this to match the score story to your own thesis.</p>
 
-    <h3>Volume block</h3>
-    <p>14 daily bars of quote volume (closed candles only — the running day is excluded so mornings don't fake a dry-up). The tape below compares the last closed day to the 7-day average: <b>&gt;2.0×</b> is a spike (breakout, news, capitulation), <b>&lt;0.5×</b> means participation is drying up. "Building / fading" is the 3d vs 7d run-rate.</p>
+    <h3>4. Use entry timing to decide <em>when</em></h3>
+    <p>Trend score tells you <b>what</b> is trending. Entry Timing tells you <b>if now is a reasonable window</b>. A high trend score with Avoid entry grade means the trend is real but the entry is poor — wait for a pullback or a better setup. An A+ entry on a moderate trend score can be a catching-early opportunity.</p>
 
-    <h3>Entry Timing grade (A+ / A / B / Avoid)</h3>
-    <p>A simplified letter grade for "<b>is now a reasonable time to look at this coin</b>" — derived from OTF (Opportunity &amp; Timing), computed for <b>every</b> coin in the universe, not just DeFi/VaF ones. It answers a different question than trend score: trend score asks "is this trending," Entry Timing asks "is the setup actionable right now" (chart structure, strength vs BTC, position in its 30-day range).</p>
-    <p>Grade bands mirror VaF's own locked OTF tiers: <b>A+</b> ≥41 (strong opportunity) · <b>A</b> ≥35 (good) · <b>B</b> ≥28 (watchlist/incomplete) · <b>Avoid</b> below that. Coverage shown alongside the badge tells you how many of the underlying metrics fed the grade — coins with a full VaF row can also have catalyst/supply timing filled in manually for a fuller picture. This grade is completely separate from trend score and VaF: it never changes either one, and neither changes it.</p>
+    <h3>5. Check VaF for DeFi &amp; infra coins</h3>
+    <p>For coins with a VaF row (protocol tokens): <b>VaF ≥ 105</b> (out of 150) indicates strong token-level value capture. Look at the PQ (protocol quality) vs NF (value capture) split — a high PQ with low NF means the protocol is good but the token doesn't capture value. The <b>CONF</b> grade (A–D) tells you how reliable the research is; machine-only rows cap at B.</p>
 
-    <h3 class="v">VaF row (DeFi &amp; infra coins)</h3>
-    <p>The Direct Value Accrual Framework scores whether the <b>token</b> — not just the protocol — captures value. <b>PQ</b> /50 protocol quality, <b>NF</b> /50 structural value capture (buybacks, burns, fee share measured from DeFiLlama holders-revenue), <b>RG</b> /50 repricing gap. <b>VaF = PQ+NF+RG</b>, out of 150; 105+ is strong, 120+ elite.</p>
-    <p><b>OTF</b> /50 scores timing only and never changes VaF. <b>VFR</b> is the 30-day confirmation ratio: token-positive value ÷ dilution — <b>N/A</b> means dilution data hasn't been manually verified, never a guess. <b>CONF</b> A–D grades research reliability; machine-only rows cap at B and low data coverage degrades it.</p>
-    <p>The core rule the framework enforces: <b>protocol revenue is not token revenue unless it reaches the token.</b> A great protocol with no value route scores high PQ, low NF — and the verdict says so.</p>
+    <h3>6. Volume tells you if the market agrees</h3>
+    <p>The 14-bar volume chart and ratio tape show participation. <b>&gt;2×</b> the 7-day average = a spike (breakout, news, or capitulation). <b>&lt;0.5×</b> = drying up. A trending coin with rising volume is more credible than one with fading volume. "Building" volume over 3 days vs 7 is a positive early signal.</p>
 
-    <h3>F-Score &amp; Composite</h3>
-    <p><b>F-Score</b> is the simpler fundamental composite (TVL growth, revenue yield, fee acceleration, value-accrual share). <b>Composite</b> blends 60% technical + 40% fundamental — fundamentals select, technicals time.</p>
+    <h3>7. The Altcoin Season Index for market timing</h3>
+    <p>Above <b>75</b> = altcoin season (broad participation). Below <b>25</b> = bitcoin season — altcoin picks are harder to find. When the index is between 25–75, selective picking works. This measures breadth, not magnitude — a few winners can't fake it.</p>
 
-    <h3>Source badges</h3>
-    <p>No badge = Binance primary. <b>BYBIT</b> (amber) = tier-2 fallback, full metrics intact. <b>CS FALLBACK</b> (red) = tier-3, price metrics only, volume history unavailable. <b>MACRO DEGRADED</b> banner = part of the macro layer is neutral-filled; trend scores still compute but their macro slice isn't live.</p>
+    <h3>8. Cross-check with Composite and F-Score</h3>
+    <p><b>Composite</b> blends 60% technical + 40% fundamental — use it when you want one number that accounts for both price action and on-chain/protocol health. <b>F-Score</b> is the fundamentals-only view (TVL growth, revenue yield, fee acceleration). Fundamentals select, technicals time.</p>
 
-    <h3>Honesty rules</h3>
-    <p>Missing data is shown as <b>n/a</b> and its weight excluded — never silently zero-filled. Scores are unvalidated heuristics for research prioritization. Nothing here is trading advice.</p>
+    <h3>Source reliability</h3>
+    <p><b>No badge</b> = Binance primary data (most reliable). <b>BYBIT</b> (amber) = tier-2 fallback, all metrics intact. <b>CS FALLBACK</b> (red) = tier-3, price only — volume unavailable. <b>MACRO DEGRADED</b> = macro layer partially filled with neutral values; scores still compute.</p>
+
+    <h3>Important caveats</h3>
+    <p>• Every score is a transparent heuristic, not a backtested model. Missing data shows as <b>n/a</b> — never silently zero-filled.<br>
+    • <b>Nothing here is trading advice.</b> Use it as a research screen, then do your own due diligence.<br>
+    • The backtest page (validation.html) tracks how well trend scores predict forward returns — check it periodically to calibrate your trust.</p>
   </div>
 </div>
 
@@ -568,6 +586,24 @@ function perfPanel(c){
 function gradeClass(g){
   return g==='A+'?'gA1':g==='A'?'gA':g==='B'?'gB':g==='Avoid'?'gAvoid':'gNA';
 }
+function scoreCaption(ts){
+  if(ts==null)return'';
+  const read=ts>=60?'Strong recent momentum':ts>=40?'Mixed / neutral signals':'Weak — momentum fading';
+  return `<div class="metric-cap">${read} (0–100 scale; higher = stronger recent trend).</div>`;
+}
+function gradeCaption(grade){
+  const map={'A+':'Best current timing to look at this coin','A':'Good timing, worth a look',
+             'B':"Timing incomplete — watch, don't rush",'Avoid':'Poor timing signals right now'};
+  return grade && map[grade] ? `<div class="metric-cap">${map[grade]}.</div>` : '';
+}
+function verdictCaption(verdict){
+  if(!verdict)return'';
+  const positive=/Accumulation|Candidate$/.test(verdict), negative=/Avoid|Broken/.test(verdict);
+  const read=positive?'Fundamentals and timing both look favorable'
+    :negative?'Weak fundamentals or broken token value capture'
+    :'Mixed signal — some strengths, some gaps';
+  return `<div class="metric-cap">${read}.</div>`;
+}
 function gradeBadge(et,tip){
   if(!et||et.grade==null)return'';
   return `<span class="gradebadge ${gradeClass(et.grade)}" data-tip="${tip}">${et.grade}</span>`;
@@ -594,6 +630,7 @@ function cardBody(sym,c){
         ${sparkline(closes)}
       </div>
       <div class="sbar"><i style="width:${ts||0}%;background:${ts!=null?scoreColor(ts):'transparent'}"></i></div>
+      ${scoreCaption(ts)}${gradeCaption(c.entry_timing?.grade)}
       ${drivers.length?`<div class="chips" style="margin:-2px 0 8px">`+drivers.map(dr=>`<span class="chip ${dr.contribution>=0?'p':'n'}">${dr.component.replace('_',' ')} <b>${dr.contribution>0?'+':''}${dr.contribution}</b></span>`).join('')+
         (c.trend_score_detail?.coverage?`<span class="chip" data-tip="How many of the 5 possible technical components fed this score. Two coins with the same numeric score aren't directly comparable if their coverage differs.">COVERAGE <b>${c.trend_score_detail.coverage.used}/${c.trend_score_detail.coverage.total}</b></span>`:'')+
         `</div>`:''}
@@ -605,7 +642,7 @@ function cardBody(sym,c){
         <span class="chip" data-tip="Value Flow Ratio: 30d token-positive value ÷ 30d dilution. N/A = dilution not manually verified yet — never guessed.">VFR <b>${vaf.vfr?.display??'N/A'}</b></span>
         <span class="chip" data-tip="Research confidence A–D from data coverage. Machine-only scoring caps at B; manual research in vaf_overrides.json raises coverage.">CONF <b>${vaf.confidence}</b></span>
         <span class="chip ${/Accumulation|Candidate$/.test(vaf.verdict)?'p':/Avoid|Broken/.test(vaf.verdict)?'n':''}" style="border-color:var(--vaf)">${vaf.verdict.toUpperCase()}</span>
-      </div>`:''}
+      </div>${verdictCaption(vaf.verdict)}`:''}
       ${vafDrivers(vaf)}
       ${newsChips(c)}
       ${c.fundamental_score!=null?`<div class="chips" style="margin:0 0 8px">
@@ -933,6 +970,21 @@ howto.addEventListener('click',e=>{
   if(e.target.hasAttribute('data-close')){howto.classList.remove('open');document.body.style.overflow='';}
 });
 addEventListener('keydown',e=>{if(e.key==='Escape'&&howto.classList.contains('open')){howto.classList.remove('open');document.body.style.overflow='';}});
+
+// Tap-to-open tooltips: touch devices have no :hover, so without this
+// every data-tip explanation (87+ of them across the dashboard) is
+// silently unreachable on mobile. One delegated listener covers every
+// current AND future [data-tip] element -- nothing to wire per-tooltip.
+document.addEventListener('click', e => {
+  const tip = e.target.closest('[data-tip]');
+  document.querySelectorAll('.tip-open').forEach(el => {
+    if (el !== tip) el.classList.remove('tip-open');
+  });
+  if (tip) tip.classList.toggle('tip-open');
+  else if (!e.target.closest('.gradebadge')) {
+    // tapping anywhere else closes whatever tooltip was open
+  }
+});
 
 skeletons();
 load();

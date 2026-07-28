@@ -201,6 +201,7 @@ def compute_global_liquidity_factor(force_refresh=False):
 
     # ── 1. Fed Balance Sheet YoY ──
     walcl = _FRED_CACHE.get("WALCL:13")
+    walcl = walcl[0] if isinstance(walcl, tuple) else walcl
     fed_yoy = _yoy_chg(walcl) if walcl else None
     # Normalize: historical mean ~5.5%, std ~8%
     # Positive = expansion (bullish for liquidity)
@@ -208,11 +209,13 @@ def compute_global_liquidity_factor(force_refresh=False):
 
     # ── 2. ECB Balance Sheet YoY ──
     ecb = _FRED_CACHE.get("ECBASSETSW:13")
+    ecb = ecb[0] if isinstance(ecb, tuple) else ecb
     ecb_yoy = _yoy_chg(ecb) if ecb else None
     ecb_z = _z_score(ecb_yoy, 4.0, 7.0) if ecb_yoy is not None else 0
 
     # ── 3. BOJ Balance Sheet YoY ──
     jpn = _FRED_CACHE.get("JPNASSETS:13")
+    jpn = jpn[0] if isinstance(jpn, tuple) else jpn
     jpn_yoy = _yoy_chg(jpn) if jpn else None
     jpn_z = _z_score(jpn_yoy, 3.0, 6.0) if jpn_yoy is not None else 0
 
@@ -258,11 +261,13 @@ def compute_global_liquidity_factor(force_refresh=False):
 
     # ── 4. US M2 YoY ──
     m2 = _FRED_CACHE.get("M2SL:13")
+    m2 = m2[0] if isinstance(m2, tuple) else m2
     m2_yoy = _yoy_chg(m2) if m2 else None
     m2_z = _z_score(m2_yoy, 6.0, 4.0) if m2_yoy is not None else 0
 
     # ── 5. TGA Balance ──
-    tga_vals = _FRED_CACHE.get("WTREGEN:8")
+    tga_vals_raw = _FRED_CACHE.get("WTREGEN:8")
+    tga_vals = tga_vals_raw[0] if isinstance(tga_vals_raw, tuple) else tga_vals_raw
     tga_score = 0
     tga_detail = "unavailable"
     if tga_vals and len(tga_vals) >= 2:
@@ -300,7 +305,8 @@ def compute_global_liquidity_factor(force_refresh=False):
         tga_score = 0
 
     # ── 6. RRP Facility ──
-    rrp_vals = _FRED_CACHE.get("RRPONTSYD:8")
+    rrp_raw = _FRED_CACHE.get("RRPONTSYD:8")
+    rrp_vals = rrp_raw[0] if isinstance(rrp_raw, tuple) else rrp_raw
     rrp_score = 0
     rrp_detail = "unavailable"
     if rrp_vals and len(rrp_vals) >= 2:

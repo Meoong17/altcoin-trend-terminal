@@ -1,43 +1,166 @@
 {
-  "run_id": "bt_1784736985",
-  "started_at": "2026-07-22T16:16:25.746924+00:00",
+  "run_id": "bt_1785212190",
+  "started_at": "2026-07-28T04:16:30.018729+00:00",
   "config": {
     "horizon_days": 7,
     "min_days_for_validity": 60
   },
-  "sufficient_sample": false,
-  "sample_days": 8,
-  "sample_note": "only 8 distinct collection days on record; need >= 60 across multiple regimes before ANY number below should be trusted",
-  "walk_forward_folds": [],
+  "sufficient_sample": true,
+  "sample_days": 257,
+  "sample_note": "257 days on record, meets the minimum -- still confirm multiple regimes are represented before trusting a single fold",
+  "walk_forward_folds": [
+    {
+      "train_days": 20,
+      "test_days": 79,
+      "test_range": [
+        "2025-11-20",
+        "2026-02-06"
+      ],
+      "n_rows": 6652,
+      "n_with_forward_return": 6652,
+      "horizon_days": 7,
+      "trend_score_vs_forward_return": {
+        "spearman": -0.015,
+        "hit_rate_60plus": {
+          "precision": 0.328,
+          "recall": 0.062,
+          "predicted_positive": 408,
+          "actual_positive": 2161,
+          "true_positive": 134,
+          "n": 6652
+        },
+        "hit_rate_below_40": {
+          "precision": 0.68,
+          "recall": 0.722,
+          "predicted_positive": 4772,
+          "actual_positive": 4491,
+          "true_positive": 3243,
+          "n": 6652
+        }
+      },
+      "entry_grade_vs_forward_return": null,
+      "entry_grade_note": "no rows carried an entry_timing grade in this window",
+      "by_regime": {
+        "UNKNOWN": {
+          "n": 6652,
+          "spearman": -0.015
+        }
+      }
+    },
+    {
+      "train_days": 99,
+      "test_days": 79,
+      "test_range": [
+        "2026-02-07",
+        "2026-04-26"
+      ],
+      "n_rows": 6660,
+      "n_with_forward_return": 6653,
+      "horizon_days": 7,
+      "trend_score_vs_forward_return": {
+        "spearman": -0.174,
+        "hit_rate_60plus": {
+          "precision": 0.367,
+          "recall": 0.074,
+          "predicted_positive": 648,
+          "actual_positive": 3201,
+          "true_positive": 238,
+          "n": 6653
+        },
+        "hit_rate_below_40": {
+          "precision": 0.473,
+          "recall": 0.567,
+          "predicted_positive": 4138,
+          "actual_positive": 3452,
+          "true_positive": 1956,
+          "n": 6653
+        }
+      },
+      "entry_grade_vs_forward_return": null,
+      "entry_grade_note": "no rows carried an entry_timing grade in this window",
+      "by_regime": {
+        "UNKNOWN": {
+          "n": 6653,
+          "spearman": -0.174
+        }
+      }
+    },
+    {
+      "train_days": 178,
+      "test_days": 79,
+      "test_range": [
+        "2026-04-27",
+        "2026-07-28"
+      ],
+      "n_rows": 9010,
+      "n_with_forward_return": 4982,
+      "horizon_days": 7,
+      "trend_score_vs_forward_return": {
+        "spearman": -0.147,
+        "hit_rate_60plus": {
+          "precision": 0.312,
+          "recall": 0.194,
+          "predicted_positive": 1057,
+          "actual_positive": 1704,
+          "true_positive": 330,
+          "n": 4982
+        },
+        "hit_rate_below_40": {
+          "precision": 0.67,
+          "recall": 0.468,
+          "predicted_positive": 2290,
+          "actual_positive": 3278,
+          "true_positive": 1534,
+          "n": 4982
+        }
+      },
+      "entry_grade_vs_forward_return": null,
+      "entry_grade_note": "no rows carried an entry_timing grade in this window",
+      "by_regime": {
+        "UNKNOWN": {
+          "n": 2292,
+          "spearman": -0.303
+        },
+        "SIDEWAYS": {
+          "n": 2690,
+          "spearman": -0.052
+        }
+      }
+    }
+  ],
   "overall_dry_run_preview": {
-    "n_rows": 3478,
-    "n_with_forward_return": 363,
+    "n_rows": 23982,
+    "n_with_forward_return": 19947,
     "horizon_days": 7,
     "trend_score_vs_forward_return": {
-      "spearman": -0.037,
+      "spearman": -0.075,
       "hit_rate_60plus": {
-        "precision": 0.438,
-        "recall": 0.131,
-        "predicted_positive": 48,
-        "actual_positive": 160,
-        "true_positive": 21,
-        "n": 363
+        "precision": 0.325,
+        "recall": 0.099,
+        "predicted_positive": 2287,
+        "actual_positive": 7502,
+        "true_positive": 743,
+        "n": 19947
       },
       "hit_rate_below_40": {
-        "precision": 0.542,
-        "recall": 0.571,
-        "predicted_positive": 214,
-        "actual_positive": 203,
-        "true_positive": 116,
-        "n": 363
+        "precision": 0.608,
+        "recall": 0.602,
+        "predicted_positive": 12322,
+        "actual_positive": 12445,
+        "true_positive": 7496,
+        "n": 19947
       }
     },
     "entry_grade_vs_forward_return": null,
     "entry_grade_note": "no rows carried an entry_timing grade in this window",
     "by_regime": {
+      "UNKNOWN": {
+        "n": 17257,
+        "spearman": -0.079
+      },
       "SIDEWAYS": {
-        "n": 363,
-        "spearman": -0.037
+        "n": 2690,
+        "spearman": -0.052
       }
     }
   }
