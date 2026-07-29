@@ -1,20 +1,13 @@
 {
-  "run_id": "bt_1785235778",
-  "started_at": "2026-07-28T10:49:38.482451+00:00",
+  "run_id": "bt_1785212190",
+  "started_at": "2026-07-28T04:16:30.018729+00:00",
   "config": {
     "horizon_days": 7,
     "min_days_for_validity": 60
   },
-  "sufficient_sample": false,
+  "sufficient_sample": true,
   "sample_days": 257,
-  "sample_note": "257 days meets the day-count bar, but only 1/2 known regimes have \u226530 samples (regimes seen: {'UNKNOWN': 17257, 'SIDEWAYS': 2701}) \u2014 a trend score tested in one regime (often UNKNOWN from backfill, or SIDEWAYS where there's no trend to detect) is not yet a meaningful validation, however many days it spans.",
-  "gates": {
-    "days_ok": true,
-    "regimes_ok": false,
-    "known_regimes": {
-      "SIDEWAYS": 2701
-    }
-  },
+  "sample_note": "257 days on record, meets the minimum -- still confirm multiple regimes are represented before trusting a single fold",
   "walk_forward_folds": [
     {
       "train_days": 20,
@@ -99,26 +92,26 @@
         "2026-04-27",
         "2026-07-28"
       ],
-      "n_rows": 9028,
-      "n_with_forward_return": 4993,
+      "n_rows": 9010,
+      "n_with_forward_return": 4982,
       "horizon_days": 7,
       "trend_score_vs_forward_return": {
-        "spearman": -0.148,
+        "spearman": -0.147,
         "hit_rate_60plus": {
           "precision": 0.312,
           "recall": 0.194,
-          "predicted_positive": 1058,
+          "predicted_positive": 1057,
           "actual_positive": 1704,
           "true_positive": 330,
-          "n": 4993
+          "n": 4982
         },
         "hit_rate_below_40": {
-          "precision": 0.671,
-          "recall": 0.469,
-          "predicted_positive": 2298,
-          "actual_positive": 3289,
-          "true_positive": 1542,
-          "n": 4993
+          "precision": 0.67,
+          "recall": 0.468,
+          "predicted_positive": 2290,
+          "actual_positive": 3278,
+          "true_positive": 1534,
+          "n": 4982
         }
       },
       "entry_grade_vs_forward_return": null,
@@ -129,33 +122,33 @@
           "spearman": -0.303
         },
         "SIDEWAYS": {
-          "n": 2701,
-          "spearman": -0.054
+          "n": 2690,
+          "spearman": -0.052
         }
       }
     }
   ],
   "overall_dry_run_preview": {
-    "n_rows": 24000,
-    "n_with_forward_return": 19958,
+    "n_rows": 23982,
+    "n_with_forward_return": 19947,
     "horizon_days": 7,
     "trend_score_vs_forward_return": {
       "spearman": -0.075,
       "hit_rate_60plus": {
         "precision": 0.325,
         "recall": 0.099,
-        "predicted_positive": 2288,
+        "predicted_positive": 2287,
         "actual_positive": 7502,
         "true_positive": 743,
-        "n": 19958
+        "n": 19947
       },
       "hit_rate_below_40": {
-        "precision": 0.609,
+        "precision": 0.608,
         "recall": 0.602,
-        "predicted_positive": 12330,
-        "actual_positive": 12456,
-        "true_positive": 7504,
-        "n": 19958
+        "predicted_positive": 12322,
+        "actual_positive": 12445,
+        "true_positive": 7496,
+        "n": 19947
       }
     },
     "entry_grade_vs_forward_return": null,
@@ -166,8 +159,8 @@
         "spearman": -0.079
       },
       "SIDEWAYS": {
-        "n": 2701,
-        "spearman": -0.054
+        "n": 2690,
+        "spearman": -0.052
       }
     }
   }

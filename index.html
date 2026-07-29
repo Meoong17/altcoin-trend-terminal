@@ -112,8 +112,16 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 .spark{margin-left:auto}
 .sbar{height:4px;border-radius:3px;background:var(--panel2);border:1px solid var(--line);margin:7px 0 3px;overflow:hidden}
 .sbar i{display:block;height:100%;border-radius:3px;transition:width .7s cubic-bezier(.22,1,.36,1)}
-.rows{display:grid;grid-template-columns:repeat(3,1fr);gap:5px 10px;font-size:11.5px}
-.rows .k{color:var(--muted);font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;display:block}
+/* Field | Value | Condition — the condition column is the "summary"
+   that says what each raw number actually means, so a reader doesn't
+   have to know that RSI 71 is overbought or that vol_ratio 2.3x is a
+   spike. Deliberately descriptive ("Overbought"), never prescriptive
+   ("Sell") — same language discipline as the grade/verdict labels. */
+.rows{display:grid;grid-template-columns:auto 1fr auto;gap:3px 10px;font-size:11px;
+  align-items:baseline;margin-top:2px}
+.rows .k{color:var(--muted);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.rows .v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rows .cond{font-size:8.5px;color:var(--muted);text-align:right;white-space:nowrap;letter-spacing:.02em}
 .pos{color:var(--up)} .neg{color:var(--down)} .neu{color:var(--text)} .wn{color:var(--warn)}
 .vafchips .chip:first-child{border-color:rgba(157,123,234,.5)}
 .vafchips .chip:first-child b{color:var(--vaf)}
@@ -149,16 +157,40 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 }
 
 /* ── tooltips (CSS-only) ── */
-[data-tip]{position:relative;cursor:help;border-bottom:1px dotted var(--dim)}
-[data-tip]::after{content:attr(data-tip);position:absolute;left:0;bottom:calc(100% + 8px);z-index:60;
-  width:230px;background:#161C29;border:1px solid var(--line2);border-radius:8px;padding:9px 11px;
-  color:var(--text);font-size:10.5px;line-height:1.55;letter-spacing:0;text-transform:none;font-weight:400;
-  box-shadow:var(--shadow-hover);opacity:0;transform:translateY(4px);pointer-events:none;
-  transition:opacity .15s,transform .15s;white-space:normal}
-[data-tip]:hover::after,[data-tip]:focus::after,[data-tip].tip-open::after{opacity:1;transform:none}
-/* Touch devices have no hover -- tapping toggles .tip-open via JS (see
-   bindTapTooltips()) so the same explanations that work on desktop
-   hover are actually reachable on mobile, not silently invisible. */
+/* ── Tooltip system ──
+   A single shared #tipbox appended to <body>, positioned by JS.
+   Deliberately NOT a ::after pseudo-element anymore: .card:hover uses
+   transform, which creates a stacking context, so a pseudo-element
+   tooltip's z-index was scoped INSIDE its own card and got painted
+   over by any later sibling card. On top of that, html{overflow-x:
+   hidden} (needed to stop mobile side-scroll) clipped tooltips near
+   the viewport edge. position:fixed on a direct body child escapes
+   both problems completely, and JS clamps it inside the viewport so
+   it can never render off-screen either. */
+[data-tip]{cursor:help;border-bottom:1px dotted var(--dim)}
+#tipbox{position:fixed;z-index:9999;max-width:min(260px,88vw);background:#161C29;
+  border:1px solid var(--line2);border-radius:8px;padding:9px 11px;color:var(--text);
+  font-family:var(--mono);font-size:10.5px;line-height:1.55;letter-spacing:0;
+  text-transform:none;font-weight:400;box-shadow:0 8px 28px rgba(0,0,0,.7);
+  opacity:0;visibility:hidden;transition:opacity .13s;pointer-events:none;white-space:normal}
+#tipbox.on{opacity:1;visibility:visible}
+
+/* 10px info icon: filled circle, purple→blue gradient, white "i".
+   Rebuilt in CSS rather than embedding the source PNG on purpose — at
+   this size a 3D-rendered raster loses all its shading detail and goes
+   soft on non-retina screens, while a gradient + glyph stays crisp at
+   any DPI and costs zero extra requests. Colours sampled directly from
+   the reference image: #764BDF top → #3142CE bottom. */
+.info-icon{display:inline-flex;align-items:center;justify-content:center;
+  width:13px;height:13px;border-radius:50%;border:none;
+  background:linear-gradient(145deg,#764BDF 0%,#5B48D8 45%,#3142CE 100%);
+  color:#fff;font-family:var(--disp);font-size:9px;font-weight:700;
+  line-height:1;font-style:normal;letter-spacing:0;
+  cursor:help;vertical-align:1px;margin-left:5px;flex:none;
+  box-shadow:0 1px 3px rgba(49,66,206,.45);
+  transition:transform .15s,box-shadow .15s,filter .15s}
+.info-icon:hover,.info-icon.tip-active{transform:scale(1.12);
+  box-shadow:0 2px 8px rgba(118,75,223,.6);filter:brightness(1.12)}
 
 /* Compact permanent captions under the 3 elements laypeople most need
    context for without having to discover a tooltip at all: trend
@@ -198,7 +230,7 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
   .rows{grid-template-columns:repeat(2,1fr)}
   .hd{flex-wrap:wrap;padding:12px 16px}
   #hd-season{display:none!important}
-  [data-tip]::after{width:min(190px,72vw)}
+  #tipbox{font-size:11px;max-width:min(240px,86vw)}
   #coins{grid-template-columns:1fr}
   .metric-cap{max-width:100%}
   .card{padding:11px 12px}
@@ -305,31 +337,31 @@ tr.detail .inner{padding:14px 16px;border-bottom:1px solid var(--line2)}
 <div class="wrap">
   <div id="macro">
     <div class="mbox">
-      <span class="lbl">SLOW SIGNAL<span class="speedtag">30-90D</span></span><br><span class="lbl" data-tip="Global Liquidity Factor 0–100: composite of central-bank balance sheets (Fed, ECB, BoJ, China M2), US M2, TGA, RRP and DXY, each as a z-score. Above 60 = liquidity tailwind for risk assets.">Global Liquidity Factor</span>
+      <span class="lbl">SLOW SIGNAL<span class="speedtag">30-90D</span></span><br><span class="lbl" data-tip="Global Liquidity Factor 0–100: composite of central-bank balance sheets (Fed, ECB, BoJ, China M2), US M2, TGA, RRP and DXY, each as a z-score. Above 60 = liquidity tailwind for risk assets.">Global Liquidity Factor</span><i class="info-icon" data-tip="Global Liquidity Factor 0–100: composite of central-bank balance sheets (Fed, ECB, BoJ, China M2), US M2, TGA, RRP and DXY, each as a z-score. Above 60 = liquidity tailwind for risk assets." role="button" tabindex="0" aria-label="How this works">i</i>
       <div class="vrow2"><div class="val" id="glf">—</div><span class="tag" id="glf-regime"></span></div>
       <div class="band"><i id="glf-pin" style="left:50%"></i></div>
       <div class="chips" id="glf-chips"></div>
     </div>
     <div class="mbox">
-      <span class="lbl" data-tip="SOFR minus EFFR spread, scored 0–1. When banks pay a premium for secured overnight funding, dollar plumbing is under stress — historically bad for crypto liquidity. Below 0.35 is calm.">Repo Stress · SOFR−EFFR</span>
+      <span class="lbl" data-tip="SOFR minus EFFR spread, scored 0–1. When banks pay a premium for secured overnight funding, dollar plumbing is under stress — historically bad for crypto liquidity. Below 0.35 is calm.">Repo Stress · SOFR−EFFR</span><i class="info-icon" data-tip="SOFR minus EFFR spread, scored 0–1. When banks pay a premium for secured overnight funding, dollar plumbing is under stress — historically bad for crypto liquidity. Below 0.35 is calm." role="button" tabindex="0" aria-label="How this works">i</i>
       <div class="vrow2"><div class="val" id="repo">—</div><span class="tag" id="repo-label"></span></div>
       <div class="band inv"><i id="repo-pin" style="left:50%"></i></div>
       <div class="chips" id="repo-chips"></div>
     </div>
     <div class="mbox">
-      <span class="lbl" data-tip="% of tracked coins whose 90-day return beats BTC's. 75+ = altcoin season (breadth of outperformance), 25 and below = bitcoin season. Computed over this terminal's universe, not CMC top-50.">Altcoin Season Index</span>
+      <span class="lbl" data-tip="% of tracked coins whose 90-day return beats BTC's. 75+ = altcoin season (breadth of outperformance), 25 and below = bitcoin season. Computed over this terminal's universe, not CMC top-50.">Altcoin Season Index</span><i class="info-icon" data-tip="% of tracked coins whose 90-day return beats BTC's. 75+ = altcoin season (breadth of outperformance), 25 and below = bitcoin season. Computed over this terminal's universe, not CMC top-50." role="button" tabindex="0" aria-label="How this works">i</i>
       <div class="vrow2"><div class="val" id="asi">—</div><span class="tag" id="asi-label"></span></div>
       <div class="band season"><i id="asi-pin" style="left:50%"></i></div>
       <div class="chips"><span class="chip" id="asi-sample"></span></div>
     </div>
     <div class="mbox">
-      <span class="lbl" data-tip="Total stablecoin float (DeFiLlama, all chains): 30d growth 65% + 7d impulse 35%. Rising float = dry powder entering crypto. Net-flow & exchange-reserve legs need paid data and are excluded, never faked.">Stablecoin Liquidity</span>
+      <span class="lbl" data-tip="Total stablecoin float (DeFiLlama, all chains): 30d growth 65% + 7d impulse 35%. Rising float = dry powder entering crypto. Net-flow & exchange-reserve legs need paid data and are excluded, never faked.">Stablecoin Liquidity</span><i class="info-icon" data-tip="Total stablecoin float (DeFiLlama, all chains): 30d growth 65% + 7d impulse 35%. Rising float = dry powder entering crypto. Net-flow & exchange-reserve legs need paid data and are excluded, never faked." role="button" tabindex="0" aria-label="How this works">i</i>
       <div class="vrow2"><div class="val" id="stbl">—</div><span class="tag" id="stbl-tag"></span></div>
       <div class="band"><i id="stbl-pin" style="left:50%"></i></div>
       <div class="chips" id="stbl-chips"></div>
     </div>
     <div id="regime" class="mbox">
-      <span class="lbl" data-tip="Deterministic market state from BTC 30d return, BTC realized-vol percentile, liquidity and repo stress. Rules ordered by severity: capitulation > risk-off > bear > bull > sideways.">Market Regime</span>
+      <span class="lbl" data-tip="Deterministic market state from BTC 30d return, BTC realized-vol percentile, liquidity and repo stress. Rules ordered by severity: capitulation > risk-off > bear > bull > sideways.">Market Regime</span><i class="info-icon" data-tip="Deterministic market state from BTC 30d return, BTC realized-vol percentile, liquidity and repo stress. Rules ordered by severity: capitulation > risk-off > bear > bull > sideways." role="button" tabindex="0" aria-label="How this works">i</i>
       <span id="regime-state"></span>
       <span class="tag" id="regime-why"></span>
     </div>
@@ -604,6 +636,131 @@ function verdictCaption(verdict){
     :'Mixed signal — some strengths, some gaps';
   return `<div class="metric-cap">${read}.</div>`;
 }
+/* ── Condition labels ──
+   Turn a raw number into what it actually means, so the card explains
+   itself without the reader needing to know the thresholds. Each
+   returns [label, cssClass]. Descriptive only — never "buy"/"sell". */
+function condRSI(v){
+  if(v==null)return['—','neu'];
+  if(v>=70)return['Overbought','wn'];
+  if(v<=30)return['Oversold','wn'];
+  if(v>=55&&v<=68)return['Momentum zone','pos'];
+  if(v>68)return['Extended','wn'];
+  return['Neutral','neu'];
+}
+function condReturn(v,strong){
+  if(v==null)return['—','neu'];
+  const s=strong??0.05;
+  if(v>=s)return['Strong up','pos'];
+  if(v>0)return['Up','pos'];
+  if(v<=-s)return['Strong down','neg'];
+  if(v<0)return['Down','neg'];
+  return['Flat','neu'];
+}
+function condMomentum(v){
+  if(v==null)return['—','neu'];
+  if(v>1e-3)return['Accelerating','pos'];
+  if(v>1e-4)return['Building','pos'];
+  if(v<-1e-3)return['Slowing fast','neg'];
+  if(v<-1e-4)return['Slowing','neg'];
+  return['Steady','neu'];
+}
+function condVolatility(v){
+  if(v==null)return['—','neu'];
+  if(v>=0.05)return['High','wn'];
+  if(v>=0.02)return['Normal','neu'];
+  return['Low / quiet','neu'];
+}
+function condVolRatio(v){
+  if(v==null)return['—','neu'];
+  if(v>=2)return['Spike','pos'];
+  if(v>=1.3)return['Elevated','pos'];
+  if(v<=0.5)return['Drying up','neg'];
+  if(v<0.8)return['Below average','neg'];
+  return['Normal','neu'];
+}
+function condVolTrend(v){
+  if(v==null)return['—','neu'];
+  if(v>1.1)return['Building','pos'];
+  if(v<0.9)return['Fading','neg'];
+  return['Steady','neu'];
+}
+function condCoverage(cov){
+  if(!cov||cov.total==null)return['—','neu'];
+  if(cov.used===cov.total)return['Complete','pos'];
+  if(cov.used>=cov.total-1)return['Near complete','neu'];
+  return['Partial — compare with care','wn'];
+}
+/* One grid row: label, value, condition. */
+function row3(label,tip,valueHtml,cond){
+  const [ctext,ccls]=cond||['',''];
+  return `<span class="k" data-tip="${escAttr(tip)}">${label}</span>`+
+         `<span class="v">${valueHtml}</span>`+
+         `<span class="cond ${ccls}">${ctext}</span>`;
+}
+function escAttr(s){
+  return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function infoIcon(tip){
+  return `<i class="info-icon" data-tip="${escAttr(tip)}" role="button" tabindex="0" aria-label="How this works">i</i>`;
+}
+
+/* ── Tooltip engine ──
+   One shared fixed-position box, positioned by JS: flips above/below
+   and clamps inside the viewport, so it can never be cut off by a
+   screen edge, an overflow:hidden ancestor, or a sibling card's
+   stacking context. Delegated listeners cover every [data-tip] on the
+   page, present and future, with no per-element wiring. */
+const tipbox=document.createElement('div');
+tipbox.id='tipbox';
+document.body.appendChild(tipbox);
+let tipTarget=null;
+function showTip(el){
+  const txt=el.getAttribute('data-tip');
+  if(!txt)return;
+  tipbox.textContent=txt;
+  tipbox.classList.add('on');
+  const r=el.getBoundingClientRect();
+  const tb=tipbox.getBoundingClientRect();
+  const M=8;
+  let top=r.top-tb.height-M;
+  if(top<M)top=r.bottom+M;                                     // flip below when no room above
+  top=Math.max(M,Math.min(top,innerHeight-tb.height-M));       // clamp vertically
+  let left=Math.max(M,Math.min(r.left,innerWidth-tb.width-M)); // clamp horizontally
+  tipbox.style.left=left+'px';
+  tipbox.style.top=top+'px';
+  if(tipTarget)tipTarget.classList.remove('tip-active');
+  el.classList.add('tip-active');
+  tipTarget=el;
+}
+function hideTip(){
+  tipbox.classList.remove('on');
+  if(tipTarget)tipTarget.classList.remove('tip-active');
+  tipTarget=null;
+}
+/* Touch devices fire a synthetic mouseover BEFORE click on tap. With a
+   naive "hover shows / click toggles" pair that means one tap opens the
+   tooltip (mouseover) then immediately closes it again (click sees it as
+   already-open) -- it looked like tap did nothing at all. Splitting on
+   pointerType keeps mouse and touch on separate paths. */
+let lastPointerType='mouse';
+document.addEventListener('pointerover',e=>{
+  lastPointerType=e.pointerType||'mouse';
+  if(e.pointerType==='touch')return;                 // touch is handled by click below
+  const el=e.target.closest('[data-tip]');
+  if(el)showTip(el);
+  else if(tipTarget&&!e.target.closest('#tipbox'))hideTip();
+});
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-tip]');
+  if(!el){hideTip();return;}
+  if(lastPointerType==='touch'){(el===tipTarget)?hideTip():showTip(el);}
+  else showTip(el);
+});
+addEventListener('scroll',()=>{if(tipTarget)hideTip();},{passive:true});
+addEventListener('resize',()=>{if(tipTarget)hideTip()});
+addEventListener('keydown',e=>{if(e.key==='Escape')hideTip();});
+
 function gradeBadge(et,tip){
   if(!et||et.grade==null)return'';
   return `<span class="gradebadge ${gradeClass(et.grade)}" data-tip="${tip}">${et.grade}</span>`;
@@ -618,8 +775,15 @@ function cardBody(sym,c){
     :c.data_source==='okx'?' <span class="chip" style="vertical-align:2px;border-color:var(--liq);color:var(--liq)">OKX</span>':'';
   const drivers=(c.trend_score_detail?.drivers||[]).slice(0,3);
   const vaf=c.vaf;
+  const cov=c.trend_score_detail?.coverage;
+  const cardTip='How this card works: the big number is Trend Score (0–100), a weighted blend of '+
+    'breakout 30%, strength vs BTC 30%, trend consistency 20%, volatility compression 10% and macro 10%. '+
+    'The letter badge is Entry Timing (A+/A/B/Avoid) — timing only, separate from the score. '+
+    'Each row below shows the raw value and, on the right, what that value currently means. '+
+    'Missing inputs are excluded and the remaining weights renormalized, never filled with zero — '+
+    'the Coverage row tells you how many of the 5 components were actually available.';
   return `      <div class="head">
-        <span class="sym">${sym.replace('USDT','')}<small>/USDT${c.groups?' · '+c.groups.map(g=>g.toUpperCase()).join(','):''}</small>${srcBadge}</span>
+        <span class="sym">${sym.replace('USDT','')}<small>/USDT${c.groups?' · '+c.groups.map(g=>g.toUpperCase()).join(','):''}</small>${srcBadge}${infoIcon(cardTip)}</span>
         <span class="px"><b>${fmtPx(c.latest_price)}</b>
           <span class="${cls(chg24,0,0)}">${chg24!=null?pct(chg24)+' 24h':''}</span></span>
       </div>
@@ -652,12 +816,18 @@ function cardBody(sym,c){
         ${c.composite_score!=null?`<span class="chip" data-tip="60% technical + 40% fundamental. Fundamentals select, technicals time.">COMPOSITE <b style="color:${scoreColor(c.composite_score)}">${c.composite_score}</b></span>`:''}
       </div>`:''}
       <div class="rows">
-        <div><span class="k" data-tip="14-day RSI (simple average). 55–68 is the momentum sweet spot rewarded by the breakout component; 70+ overbought, 30− oversold.">RSI-14</span><span class="${c.rsi==null?'neu':c.rsi>=70||c.rsi<=30?'wn':'neu'}">${c.rsi??'n/a'}</span></div>
-        <div><span class="k" data-tip="Coming up next: a labeled 1D/7D/30D performance table vs BTC and ETH.">Trend</span><span class="neu">see below</span></div>
-        <div><span class="k" data-tip="Price change over the last 30 daily closes.">30d</span><span class="${cls(chg30,0,0)}">${chg30!=null?pct(chg30):'n/a'}</span></div>
-        <div><span class="k" data-tip="Return acceleration: 3-day average daily return minus 7-day average. Positive = trend speeding up.">Momentum</span><span class="${cls(c.momentum,1e-4,-1e-4)}">${c.momentum!=null?(c.momentum>0?'+':'')+c.momentum.toFixed(5):'n/a'}</span></div>
-        <div><span class="k" data-tip="Standard deviation of daily returns (30d window).">Volatility</span><span class="neu">${c.volatility!=null?(c.volatility*100).toFixed(2)+'%':'n/a'}</span></div>
-        <div><span class="k" data-tip="Latest daily return (last closed candle vs prior).">Ret 24h</span><span class="${cls(c.return,0,0)}">${c.return!=null?pct(c.return):'n/a'}</span></div>
+        ${row3('RSI-14','14-day RSI (simple average). 55–68 is the momentum sweet spot rewarded by the breakout component; 70+ overbought, 30− oversold.',
+          `<span class="${c.rsi==null?'neu':c.rsi>=70||c.rsi<=30?'wn':'neu'}">${c.rsi??'n/a'}</span>`, condRSI(c.rsi))}
+        ${row3('30d','Price change over the last 30 daily closes.',
+          `<span class="${cls(chg30,0,0)}">${chg30!=null?pct(chg30):'n/a'}</span>`, condReturn(chg30,0.05))}
+        ${row3('Ret 24h','Latest daily return (last closed candle vs the one before it).',
+          `<span class="${cls(c.return,0,0)}">${c.return!=null?pct(c.return):'n/a'}</span>`, condReturn(c.return,0.03))}
+        ${row3('Momentum','Return acceleration: 3-day average daily return minus the 7-day average. Positive = the trend is speeding up, not just continuing.',
+          `<span class="${cls(c.momentum,1e-4,-1e-4)}">${c.momentum!=null?(c.momentum>0?'+':'')+c.momentum.toFixed(5):'n/a'}</span>`, condMomentum(c.momentum))}
+        ${row3('Volatility','Standard deviation of daily returns over a 30-day window. Higher = wider daily swings, which widens both upside and risk.',
+          `<span class="neu">${c.volatility!=null?(c.volatility*100).toFixed(2)+'%':'n/a'}</span>`, condVolatility(c.volatility))}
+        ${row3('Coverage',"How many of the 5 technical components actually fed this coin's trend score. Two coins with the same score are only directly comparable when their coverage matches.",
+          `<span class="neu">${cov?cov.used+'/'+cov.total:'n/a'}</span>`, condCoverage(cov))}
       </div>
       ${perfPanel(c)}
       <div class="vol">
@@ -669,7 +839,11 @@ function cardBody(sym,c){
         </div>
         <div class="vmeta">
           <span>7d avg ${c.vol_avg_7d_usd!=null?fmtUsd(c.vol_avg_7d_usd):'n/a'}</span>
-          <span>trend ${c.vol_trend!=null?c.vol_trend.toFixed(2):'n/a'} ${c.vol_trend!=null?(c.vol_trend>1.1?'▲ building':c.vol_trend<0.9?'▼ fading':'— steady'):''}</span>
+          <span class="${condVolRatio(vr)[1]}">participation: ${condVolRatio(vr)[0]}</span>
+        </div>
+        <div class="vmeta">
+          <span>trend ${c.vol_trend!=null?c.vol_trend.toFixed(2):'n/a'}</span>
+          <span class="${condVolTrend(c.vol_trend)[1]}">3d vs 7d: ${condVolTrend(c.vol_trend)[0]}</span>
         </div>
       </div>`;
 }
@@ -970,21 +1144,6 @@ howto.addEventListener('click',e=>{
   if(e.target.hasAttribute('data-close')){howto.classList.remove('open');document.body.style.overflow='';}
 });
 addEventListener('keydown',e=>{if(e.key==='Escape'&&howto.classList.contains('open')){howto.classList.remove('open');document.body.style.overflow='';}});
-
-// Tap-to-open tooltips: touch devices have no :hover, so without this
-// every data-tip explanation (87+ of them across the dashboard) is
-// silently unreachable on mobile. One delegated listener covers every
-// current AND future [data-tip] element -- nothing to wire per-tooltip.
-document.addEventListener('click', e => {
-  const tip = e.target.closest('[data-tip]');
-  document.querySelectorAll('.tip-open').forEach(el => {
-    if (el !== tip) el.classList.remove('tip-open');
-  });
-  if (tip) tip.classList.toggle('tip-open');
-  else if (!e.target.closest('.gradebadge')) {
-    // tapping anywhere else closes whatever tooltip was open
-  }
-});
 
 skeletons();
 load();
