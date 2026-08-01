@@ -597,7 +597,7 @@ function newsChips(c){
   return`<div class="chips" style="margin:0 0 8px">
     <span class="chip" data-tip="Community vote sentiment from CryptoPanic posts (24h recency-weighted, -100..+100). Display-only — never feeds the scores."><span class="sdot" style="background:${col}"></span> SENT <b>${s>0?'+':''}${s}</b></span>
     <span class="chip">NEWS 24H <b>${n.news_24h}</b></span>${cat}
-  </div>${n.top?`<div style="font-size:10px;color:var(--muted);margin:-4px 0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">↳ <a href="${n.top.url}" target="_blank" rel="noopener" style="color:var(--muted)">${n.top.title}</a></div>`:''}`;
+  </div>${n.top?`<div style="font-size:10px;color:var(--muted);margin:-4px 0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">↳ <a href="${safeUrl(n.top.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--muted)">${escAttr(n.top.title)}</a></div>`:''}`;
 }
 function pctOrDash(v){ return v==null ? '—' : (v>0?'+':'')+(v*100).toFixed(2)+'%'; }
 function perfPanel(c){
@@ -700,6 +700,13 @@ function row3(label,tip,valueHtml,cond){
 }
 function escAttr(s){
   return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function safeUrl(u){
+  // Only allow http/https — blocks javascript:/data:/vbscript: injection
+  // in link hrefs (used for external news URLs). Anything else degrades to
+  // a dead '#' link rather than being rendered as a live, executable URL.
+  const s=String(u??'');
+  return /^https?:\/\//i.test(s) ? s : '#';
 }
 function infoIcon(tip){
   return `<i class="info-icon" data-tip="${escAttr(tip)}" role="button" tabindex="0" aria-label="How this works">i</i>`;
