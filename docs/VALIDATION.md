@@ -65,6 +65,34 @@ falsified cross-era. This closes the three "literature-favourite"
 candidates (momentum, technical trend score, and by extension anything
 derived purely from price/volume history).
 
+### Follow-up: does a *probability* framing change anything? — NO (tested)
+
+The natural objection to the rank-based verdict is "what if we output a
+**probability** (logistic model) instead of a rank score?" — as if a
+probability were a new signal. It is not: probability is an **output
+representation** of features, not new information. A logistic model on
+the *same* momentum features was tested (17 Aug 2026,
+`analysis/probability_momentum_test.py`, 111,900 rows / 35,180 OOS,
+chronological split, features L7/L14/L30/L60):
+
+| Target | OOS AUC | Verdict |
+|--------|---------|---------|
+| P(forward return > 0) — time-series | 0.525 | ~noise; only BULL 0.582 / BEAR 0.565, SIDEWAYS (bulk, n=26,836) **0.502** — regime direction, not selection edge |
+| P(beats median return that day) — cross-sec | 0.498 | coin-flip |
+| P(top-quintile return that day) — cross-sec | 0.508 | coin-flip |
+
+The two **cross-sectional selection** targets (the question momentum was
+supposed to answer — "which altcoin wins") are coin-flip (0.498 / 0.508).
+The only >0.5 number is the time-series up/down in extreme regimes
+(BULL/BEAR), which is capturing market *direction/volatility*, not
+cross-sectional selection, and is absent in the dominant SIDEWAYS
+regime. **Conclusion: re-encoding momentum as a probability adds nothing.**
+
+A probability model is only worth building when the **features** carry
+signal — and the only untested feature set is fundamental/VaF (needs
+point-in-time history). The method (rank vs probability vs ML) is not the
+lever; the information content of the features is.
+
 ---
 
 ## Fundamental / value-accrual — UNTESTED (data not yet sufficient)
