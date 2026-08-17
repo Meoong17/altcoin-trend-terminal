@@ -340,6 +340,11 @@ def main():
         for symbol, (fscore, fdet, _raw) in fundamentals.items():
             coins_output[symbol]["fundamental_score"] = fscore
             coins_output[symbol]["fundamental_detail"] = fdet
+            # Persist the RAW fundamental inputs (tvl, fees_7d/30d,
+            # revenue_30d, holders_revenue) per-date too, so a future
+            # value test is not hostage to today's composite formula.
+            # These flow into history.db snapshots via append_cycle.
+            coins_output[symbol]["fundamental_raw"] = _raw
             coins_output[symbol]["composite_score"] = blend_composite(
                 coins_output[symbol].get("trend_score"), fscore)
 
@@ -353,6 +358,7 @@ def main():
                    if s in mcaps and r.get("fees_30d")]
         for symbol, raw in raws.items():
             row = coins_output[symbol]
+            row["mcap"] = mcaps.get(symbol)
             row["vaf"] = evaluate_token(
                 symbol, raw, mcap=mcaps.get(symbol),
                 features=row.get("features"),

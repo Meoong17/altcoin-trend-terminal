@@ -95,24 +95,36 @@ lever; the information content of the features is.
 
 ---
 
-## Fundamental / value-accrual — UNTESTED (data not yet sufficient)
+## Fundamental / value-accrual — PENDING (accumulating point-in-time history)
 
-**Status (17 Aug 2026):** cannot be fairly tested yet. The fundamental
-and VaF inputs (TVL growth, revenue yield, fee acceleration, value
-accrual from DeFiLlama) are static snapshots — they are not persisted
-point-in-time per date, so there is no historical series to regress
-against forward returns.
+**Corrected state (17 Aug 2026):** an earlier note claimed fundamentals
+were "static, not persisted point-in-time" — that was **wrong**. The
+collector has persisted per-(date, coin) fundamental features into
+`history.db` snapshots since **2026-07-13** (tvl_growth_30d,
+fee_accel_7v30, value_accrual_ratio, revenue_yield_ann, price_to_fees,
+vaf score/otf/vfr). On 17 Aug this was **enriched** to also persist the
+raw inputs (`fundamental_raw`: tvl_now, fees_7d/30d, revenue_30d,
+holders_revenue) and `mcap` per date, so a future test is not hostage to
+today's composite formula. All of it flows point-in-time into the
+snapshot payload — no lookahead.
 
-**What it would take to close this honestly**
-1. Modify the collector to persist per-date point-in-time fundamental
-   snapshots (not just current values).
-2. Accumulate ~60+ days (ideally multiple regimes) of history.
-3. Then run the same cross-era walk-forward IC / hit-rate test used
-   above.
+**Why it can't be judged yet:** only ~20 days have accumulated (16 DeFi/
+infra coins). A fair cross-era test needs ≥60 days and ≥2 regimes with
+sufficient samples.
 
-**Status:** open path — the only remaining candidate that can still be
-settled fairly. Not a claim it works; just that it has not been
-falsified (or confirmed) yet.
+**Ready-to-run framework:** `analysis/fundamental_value_test.py` reads
+the point-in-time fundamental panel, joins forward 7d returns from
+Binance Vision, and runs the same logistic / OOS-AUC cross-era test used
+for momentum (targets: beats-median and top-quintile = "which coin
+wins"). It reports **INSUFFICIENT DATA** honestly until history matures,
+then produces the verdict. Run it periodically.
+
+**Status:** the **only remaining open path**. A value test on this
+feature set is the last candidate that can still be settled fairly. No
+claim it works — just that it is finally testable once data accumulates.
+If it too comes back ~0.5 cross-era, the terminal is honestly
+intelligence-only (fundamental + macro + regime display), not a
+predictor.
 
 ---
 
@@ -121,9 +133,10 @@ falsified (or confirmed) yet.
 | Signal | Status | Evidence |
 |--------|--------|----------|
 | Cross-sectional momentum (altcoins) | **REJECTED** | 9-yr × 14-coin era-split IC (table above) |
+| Probability re-encoding of momentum | **REJECTED** | logistic OOS-AUC 0.498/0.508 cross-sec |
 | trend_score technical composite | **REJECTED** | backtest_latest.json Spearman −0.072, low precision/recall |
 | entry_grade | UNTESTED (insufficient rows) | 2,163 rows, one fold |
-| Fundamental / VaF | UNTESTED (no point-in-time history) | data gap, not a negative result |
+| Fundamental / VaF (point-in-time) | **PENDING — accumulating** | 20 days stored; framework ready, needs ≥60 days |
 
 The terminal's honest position: it is strong as a **research / macro /
 fundamental intelligence dashboard** (documented heuristics,
