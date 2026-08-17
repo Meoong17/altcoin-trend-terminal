@@ -149,3 +149,10 @@ cycle specifically so that, once enough history exists, these weights
 can be backtested against real outcomes rather than trusted on
 priors. Until that validation happens, treat every score here as a
 research-prioritization signal, not a trading signal.
+
+**What has been tested already:** cross-sectional momentum and the
+technical `trend_score` composite have been falsified against forward
+returns (9 years × 14 coins, regime-split) — see
+`docs/VALIDATION.md`. Do not re-test or re-build momentum/technicals
+without new data. Fundamental/VaF inputs are not yet testable because
+they lack point-in-time history; that is the only remaining open path.
