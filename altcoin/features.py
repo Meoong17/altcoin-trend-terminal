@@ -295,3 +295,61 @@ def score_components(f, rsi, macro_component):
                "weight_covered": round(total_w, 2),
                "missing": sorted(set(WEIGHTS) - set(comps))}
     return round(score, 1), drivers, coverage
+
+
+# ── Volume-flow classification (DISPLAY-ONLY — never feeds scoring) ──
+# The "where does money move before price realizes it" layer proposed in the
+# a.docx spec. This is a *label*, not a score: it reads the token-level volume
+# signal (vol_ratio spike, vol_trend warming) against price position
+# (prox_30d_high) to classify the money-flow state. It does NOT change any
+# trend score / entry grade — per repo rule, scoring changes require walk-
+# forward validation first (see analysis/volume_flow_cascade_test.py, which
+# found this edge is weak/conditional and NOT strong enough to drive scoring).
+#
+# Decision tree (matches the a.docx spec):
+#   not-QI (trend_score < 60):
+#     vol>=1.2 AND price still low  -> EARLY ACCUMULATION  (money in before repricing)
+#     vol>=1.2                      -> BREAKOUT            (volume after price ran)
+#     price near 30d high           -> EXTENDED
+#     else                          -> NO SIGNAL
+#   QI (trend_score >= 60):
+#     vol warming + sustained       -> QI FLOW             (rotation following trend)
+#     price near 30d high           -> EXTENDED
+#     vol>=1.2                      -> BREAKOUT
+#     else                          -> NO SIGNAL
+VOLUME_FLOW_LABELS = ("EARLY ACCUMULATION", "QI FLOW", "BREAKOUT", "EXTENDED", "NO SIGNAL")
+
+
+def classify_volume_flow(features, vol_ratio, vol_trend, trend_score):
+    """Display-only money-flow label for a coin. Returns dict {label, detail,
+    qi}. Returns NO SIGNAL with a reason when inputs are missing."""
+    prox = (features or {}).get("prox_30d_high")
+    qi = trend_score is not None and trend_score >= 60
+    if vol_ratio is None or vol_trend is None or prox is None:
+        return {"label": "NO SIGNAL", "detail": "insufficient volume/price data",
+                "qi": qi}
+    if qi:
+        if vol_trend >= 1.10 and vol_ratio >= 1.0:
+            return {"label": "QI FLOW", "detail": f"volume warming {vol_trend:.2f} 3d/7d, sustained {vol_ratio:.2f}x",
+                    "qi": True}
+        if prox >= 0.90:
+            return {"label": "EXTENDED", "detail": f"trend near 30d high ({prox:.0%} of range)",
+                    "qi": True}
+        if vol_ratio >= 1.2:
+            return {"label": "BREAKOUT", "detail": f"volume {vol_ratio:.2f}x within trend",
+                    "qi": True}
+        return {"label": "NO SIGNAL", "detail": "trend ok, no flow trigger", "qi": True}
+    # not QI
+    if vol_ratio >= 1.2 and prox < 0.5:
+        lvl = "strong" if vol_ratio >= 1.3 else "valid"
+        return {"label": "EARLY ACCUMULATION",
+                "detail": f"{lvl}: vol {vol_ratio:.2f}x, price only {prox:.0%} of 30d range",
+                "qi": False}
+    if vol_ratio >= 1.2:
+        return {"label": "BREAKOUT", "detail": f"volume {vol_ratio:.2f}x after price ran ({prox:.0%} of range)",
+                "qi": False}
+    if prox >= 0.90:
+        return {"label": "EXTENDED", "detail": f"price near 30d high ({prox:.0%} of range)",
+                "qi": False}
+    return {"label": "NO SIGNAL", "detail": "no volume-flow trigger", "qi": False}
+

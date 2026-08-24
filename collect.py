@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from altcoin.analyzer import (analyze_multiple_coins, discover_top_symbols, compute_alt_season,
                               rank_symbols_by_volume, fetch_klines)
-from altcoin.features import score_components
+from altcoin.features import score_components, classify_volume_flow
 from altcoin.regime import classify_regime
 from altcoin.history import (append_cycle, stats as history_stats,
                              regime_streak, macro_series, get_model_version)
@@ -390,6 +390,19 @@ def main():
     graded = sum(1 for r in coins_output.values() if r.get("entry_timing", {}).get("grade") not in (None, "N/A"))
     print(f"[Collect] Entry Timing graded: {graded}/{len(coins_output)} coins")
 
+    # ── Volume-flow label (DISPLAY-ONLY, never feeds scoring) ──
+    # The "where does money move before price realizes it" layer. Classifies
+    # each coin's volume signal (vol_ratio spike, vol_trend warming) against
+    # price position (prox_30d_high) into EARLY ACCUMULATION / QI FLOW /
+    # BREAKOUT / EXTENDED / NO SIGNAL. Purely a label on top of existing data
+    # (no new API calls); it does NOT touch trend_score or entry_timing.
+    for symbol, row in coins_output.items():
+        if row.get("status") != "ok":
+            continue
+        row["volume_flow"] = classify_volume_flow(
+            row.get("features"), row.get("vol_ratio"), row.get("vol_trend"),
+            row.get("trend_score"))
+
     # ── News sentiment & catalyst layer (display-only) ──
     if news_configured():
         try:
@@ -437,12 +450,57 @@ def main():
         print(f"[Collect] Alt Season Index: {alt_season['index']} ({alt_season['label']}, "
               f"{alt_season['outperformers']}/{alt_season['sample']} beat BTC 90d)")
 
+    # ── Context Gate (DISPLAY-ONLY) — majors BTC+ETH + rotation ──
+    # The gate the volume-flow layer is conditional on: money rotating into
+    # alts only after majors (BTC+ETH) are risk-on. ETH is a MAJOR (co-leads
+    # with BTC), NOT a member of the alt basket. Computed from data already in
+    # memory (no new API calls). Display-only — never feeds scoring.
+    #   majors_ret30 = median(BTC 30d, ETH 30d)   -> RISK_ON / NEUTRAL / RISK_OFF
+    #   rotation     = alt_ret30 - majors_ret30   -> ALT_LEAD / FLAT / MAJ_LEAD
+    #   gate_open    = majors RISK_ON AND rotation ALT_LEAD
+    def _ret_from_closes(closes, lag=30):
+        if closes is None or len(closes) <= lag:
+            return None
+        return closes[-1] / closes[-1 - lag] - 1
+    btc_ret30 = _ret_from_closes(btc_closes)
+    eth_ret30 = None
+    if "ETHUSDT" in coins_output:
+        eth_ret30 = (coins_output["ETHUSDT"].get("performance") or {}).get("ret_30d")
+    majors_vals = [v for v in (btc_ret30, eth_ret30) if v is not None]
+    majors_ret30 = (sum(majors_vals) / len(majors_vals)) if majors_vals else None
+    alt_rets = [c.get("performance", {}).get("ret_30d") for s, c in coins_output.items()
+                if c.get("status") == "ok" and s != "ETHUSDT"]
+    alt_rets = [r for r in alt_rets if r is not None]
+    alts_ret30 = (sum(alt_rets) / len(alt_rets)) if alt_rets else None
+    context_gate = {
+        "majors_ret30": round(majors_ret30, 4) if majors_ret30 is not None else None,
+        "alts_ret30": round(alts_ret30, 4) if alts_ret30 is not None else None,
+        "rotation": round(alts_ret30 - majors_ret30, 4)
+            if (alts_ret30 is not None and majors_ret30 is not None) else None,
+        "majors": ("RISK_ON" if majors_ret30 > 0.05 else
+                   "RISK_OFF" if majors_ret30 < -0.05 else "NEUTRAL")
+            if majors_ret30 is not None else None,
+        "rotation_state": ("ALT_LEAD"
+            if (alts_ret30 is not None and majors_ret30 is not None and
+                alts_ret30 - majors_ret30 > 0.05)
+            else "MAJ_LEAD"
+            if (alts_ret30 is not None and majors_ret30 is not None and
+                alts_ret30 - majors_ret30 < -0.05) else "FLAT"),
+        "gate_open": bool(
+            majors_ret30 is not None and alts_ret30 is not None and
+            majors_ret30 > 0.05 and alts_ret30 - majors_ret30 > 0.05),
+    }
+    print(f"[Collect] Context Gate: majors={context_gate['majors']} "
+          f"({context_gate['majors_ret30']}) rotation={context_gate['rotation_state']} "
+          f"({context_gate['rotation']}) -> open={context_gate['gate_open']}")
+
     output = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "universe": universe,
         "alt_season": alt_season,
         "regime": regime,
         "market": market,
+        "context_gate": context_gate,
         "macro": {
             "stablecoin_liquidity": stable_score,
             "stablecoin_detail": stable_detail,

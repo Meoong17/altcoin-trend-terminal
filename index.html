@@ -101,6 +101,18 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
   transition:transform .18s ease,box-shadow .18s ease,border-color .18s}
 .card:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover)}
 .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.vfrow{display:flex;align-items:center;gap:6px;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;margin:1px 0 6px;cursor:help}
+.vfrow b{font-family:var(--disp);font-weight:700;font-size:10px}
+.vfdot{width:7px;height:7px;border-radius:50%;flex:none}
+.vf-hot .vfdot,.vfdot.vf-hot{background:var(--up);box-shadow:0 0 6px var(--up)}
+.vf-hot{color:var(--up)}
+.vf-warm .vfdot,.vfdot.vf-warm{background:var(--warn);box-shadow:0 0 5px var(--warn)}
+.vf-warm{color:var(--warn)}
+.vf-cold .vfdot,.vfdot.vf-cold{background:var(--down);box-shadow:0 0 5px var(--down)}
+.vf-cold{color:var(--down)}
+.vf-mute .vfdot,.vfdot.vf-mute{background:var(--dim)}
+.vf-mute{color:var(--muted)}
+.vfmuted{color:var(--dim);margin-left:auto;font-size:8.5px;letter-spacing:.08em;text-transform:none}
 .sym{font-family:var(--disp);font-weight:700;font-size:14px;letter-spacing:.03em}
 .sym small{color:var(--dim);font-weight:500;font-size:10px}
 .px{text-align:right}
@@ -359,6 +371,11 @@ tr.detail .inner{padding:14px 16px;border-bottom:1px solid var(--line2)}
       <div class="vrow2"><div class="val" id="stbl">—</div><span class="tag" id="stbl-tag"></span></div>
       <div class="band"><i id="stbl-pin" style="left:50%"></i></div>
       <div class="chips" id="stbl-chips"></div>
+    </div>
+    <div class="mbox" id="gate-box">
+      <span class="lbl" data-tip="Context Gate — the volume-flow label on each card only carries weight when this gate is OPEN: majors (BTC+ETH) risk-on AND rotation into alts (alt basket outperforming majors over 30d). ETH is a major, not an alt. Display-only — never changes any score.">Context Gate · BTC+ETH</span><i class="info-icon" data-tip="Context Gate — the volume-flow label on each card only carries weight when this gate is OPEN: majors (BTC+ETH) risk-on AND rotation into alts (alt basket outperforming majors over 30d). ETH is a major, not an alt. Display-only — never changes any score." role="button" tabindex="0" aria-label="How this works">i</i>
+      <div class="vrow2"><div class="val" id="gate-state">—</div><span class="tag" id="gate-why"></span></div>
+      <div class="chips" id="gate-chips"></div>
     </div>
     <div id="regime" class="mbox">
       <span class="lbl" data-tip="Deterministic market state from BTC 30d return, BTC realized-vol percentile, liquidity and repo stress. Rules ordered by severity: capitulation > risk-off > bear > bull > sideways.">Market Regime</span><i class="info-icon" data-tip="Deterministic market state from BTC 30d return, BTC realized-vol percentile, liquidity and repo stress. Rules ordered by severity: capitulation > risk-off > bear > bull > sideways." role="button" tabindex="0" aria-label="How this works">i</i>
@@ -772,6 +789,13 @@ function gradeBadge(et,tip){
   if(!et||et.grade==null)return'';
   return `<span class="gradebadge ${gradeClass(et.grade)}" data-tip="${tip}">${et.grade}</span>`;
 }
+function vfClass(label){
+  const c=String(label||'').replace(/_/g,' ').toUpperCase();
+  if(c.includes('EARLY')||c.includes('QI FLOW'))return'vf-hot';   // accumulation / rotation = money in early
+  if(c.includes('BREAKOUT'))return'vf-warm';
+  if(c.includes('EXTENDED'))return'vf-cold';                        // chasing late
+  return'vf-mute';
+}
 function cardBody(sym,c){
   const ts=c.trend_score, closes=c.closes_30d, vols=c.volumes_30d;
   const chg30=closes&&closes.length>1?(closes[closes.length-1]/closes[0]-1):null;
@@ -794,6 +818,7 @@ function cardBody(sym,c){
         <span class="px"><b>${fmtPx(c.latest_price)}</b>
           <span class="${cls(chg24,0,0)}">${chg24!=null?pct(chg24)+' 24h':''}</span></span>
       </div>
+      <div class="vfrow" data-tip="${c.volume_flow?.detail||'Volume-flow label: where money moves before price realizes it. Display-only — never changes any score.'}"><span class="vfdot ${vfClass(c.volume_flow?.label)}"></span><b class="${vfClass(c.volume_flow?.label)}">${c.volume_flow?.label||'NO SIGNAL'}</b><span class="vfmuted">${c.volume_flow?.qi?'trend QI':'pre-QI'}</span></div>
       <div class="scorerow">
         <b style="color:${ts!=null?scoreColor(ts):'var(--muted)'}">${ts!=null?ts.toFixed(1):'n/a'}</b>
         <span class="sl">FAST<span class="speedtag" style="margin-left:3px">1-7D</span><br></span><span class="sl" data-tip="Weighted technical composite: breakout 30%, strength vs BTC 30%, trend consistency 20%, compression 10%, macro 10%. Chips below show each component's push above/below neutral.">trend<br>score</span>
@@ -909,6 +934,26 @@ function render(d,force){
     sd.total_usd!=null?`<span class="chip">FLOAT <b>${fmtUsd(sd.total_usd)}</b></span>`:'',
     sd.growth_30d!=null?`<span class="chip ${sd.growth_30d>=0?'p':'n'}">30D <b>${(sd.growth_30d*100).toFixed(2)}%</b></span>`:'',
     sd.growth_7d!=null?`<span class="chip ${sd.growth_7d>=0?'p':'n'}">7D <b>${(sd.growth_7d*100).toFixed(2)}%</b></span>`:''].join('');
+
+  // ── context gate: majors BTC+ETH + rotation (display-only) ──
+  const cg=d.context_gate||{};
+  const gateEl=$('gate-state');
+  if(cg.majors!=null&&cg.rotation_state!=null){
+    const open=cg.gate_open===true;
+    const gcol=open?'var(--up)':(cg.majors==='RISK_OFF'||cg.rotation_state==='MAJ_LEAD')?'var(--down)':'var(--warn)';
+    gateEl.textContent=open?'OPEN':'CLOSED';
+    gateEl.style.color=gcol;
+    $('gate-why').textContent=`majors ${(cg.majors||'').replace(/_/g,' ')} · rotation ${(cg.rotation_state||'').replace(/_/g,' ')}`;
+    $('gate-chips').innerHTML=[
+      cg.majors_ret30!=null?`<span class="chip">MAJORS 30D <b style="color:${cg.majors_ret30>=0?'var(--up)':'var(--down)'}">${(cg.majors_ret30*100).toFixed(1)}%</b></span>`:'',
+      cg.alts_ret30!=null?`<span class="chip">ALTS 30D <b style="color:${cg.alts_ret30>=0?'var(--up)':'var(--down)'}">${(cg.alts_ret30*100).toFixed(1)}%</b></span>`:'',
+      cg.rotation!=null?`<span class="chip ${cg.rotation>=0?'p':'n'}">ROTATION <b>${cg.rotation>0?'+':''}${(cg.rotation*100).toFixed(1)}%</b></span>`:'',
+      open?`<span class="chip p" style="border-color:var(--up)">FLOW ACTIVE</span>`:`<span class="chip n">FLOW DISABLED</span>`].join('');
+  }else{
+    gateEl.textContent='n/a'; gateEl.style.color='var(--muted)';
+    $('gate-why').textContent='needs BTC/ETH + alt 30d history';
+    $('gate-chips').innerHTML='<span class="chip">insufficient history</span>';
+  }
 
   // BTC.D chips inside the alt-season box
   const mk=d.market||{};
