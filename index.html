@@ -400,13 +400,12 @@ tr.detail .inner{padding:14px 16px;border-bottom:1px solid var(--line2)}
     </div>
     <label class="cl" for="sort">sort</label>
     <select id="sort">
-      <option value="trend_score">trend score</option>
+      <option value="trend_score">tech setup (display only)</option>
       <option value="vol_ratio">volume spike (ratio)</option>
       <option value="chg24">24h change</option>
       <option value="vol_24h_usd">volume 24h</option>
       <option value="rsi">RSI</option>
       <option value="fundamental_score">fundamental</option>
-      <option value="composite_score">composite (T+F)</option>
       <option value="vaf_total">VaF</option>
       <option value="entry_grade">entry timing</option>
     </select>
@@ -434,18 +433,18 @@ tr.detail .inner{padding:14px 16px;border-bottom:1px solid var(--line2)}
     <h3>1. Scan the macro bar first</h3>
     <p>Before looking at individual coins, check the top bar: <b>GLF</b> (global liquidity), <b>Repo Stress</b>, and <b>Market Regime</b>. Altcoin longs historically work best when regime is <b>BULL TREND</b> with GLF above 60. If GLF is below 40 or regime is CRISIS, prioritize capital preservation over picking longs.</p>
 
-    <h3>2. Filter coins by score and entry timing</h3>
-    <p>Use the sort headers to rank by <b>Trend Score</b> (technical strength 0–100) and <b>Entry Timing</b> grade (A+ to Avoid). A practical filter sequence:</p>
-    <p>• <b>Trend Score ≥ 60</b> (green) — technicals are aligned.<br>
-    • <b>Entry Timing A+ or A</b> — the current setup is actionable.<br>
-    • <b>Composite</b> blends technical + fundamental for a single view.</p>
-    <p>Coins that pass both filters are worth deeper research. Scores below 40 (red) with Avoid grade are not actionable right now.</p>
+    <h3>2. Filter coins by entry timing and fundamentals</h3>
+    <p>Use the sort headers to rank by <b>Entry Timing</b> grade (A+ to Avoid) or <b>Fundamental / VaF</b>. A practical filter sequence:</p>
+    <p>• <b>Entry Timing A+ or A</b> — the current setup is worth a look.<br>
+    • <b>VaF ≥ 105 / F-Score</b> (protocol tokens) — strong measured value capture.<br>
+    • The <b>technical setup</b> readout is <b>DISPLAY ONLY — NOT validated</b> (momentum &amp; technicals failed the cross-era test), so use it as context, not a filter.</p>
+    <p>Coins that pass the fundamentals + timing filters are worth deeper research. Avoid-grade entries are not actionable right now.</p>
 
-    <h3>3. Understand the score's building blocks</h3>
-    <p>Click any coin row or hover the dotted labels. Each trend score has <b>drivers</b> — the small chips under the number show which components (flow rotation, participation/volume, relative strength vs BTC, compression, plus a small confirmation filter) are pulling the score up or down. The four <em>core</em> signals drive the score: <b>flow rotation</b> (is money moving in early, or is volume chasing an already-extended price?), <b>participation</b> (is volume building or drying up?), <b>relative strength vs BTC</b>, and <b>volatility compression</b>. Use this to match the score story to your own thesis.</p>
+    <h3>3. Understand the technical readout's building blocks</h3>
+    <p>Click any coin row or hover the dotted labels. The technical readout (display-only, not validated) has <b>drivers</b> — the small chips under the number show which components (flow rotation, participation/volume, relative strength vs BTC, compression, plus a small confirmation filter) are pulling it up or down. The four <em>core</em> components: <b>flow rotation</b> (the share of volume that is aggressive buying — who is pressing, distinct from volume itself), <b>participation</b> (is activity building or drying up?), <b>relative strength vs BTC</b>, and <b>volatility compression</b>. Volume tells you there is activity; flow tells you who is driving it and which way. Use this as context to match the price story to your own thesis — not as a buy signal.</p>
 
     <h3>4. Use entry timing to decide <em>when</em></h3>
-    <p>Trend score tells you <b>what</b> is trending. Entry Timing tells you <b>if now is a reasonable window</b>. A high trend score with Avoid entry grade means the trend is real but the entry is poor — wait for a pullback or a better setup. An A+ entry on a moderate trend score can be a catching-early opportunity.</p>
+    <p>Entry Timing (A+ to Avoid) tells you <b>if now is a reasonable window</b>, based on chart structure, relative strength and execution quality. It is separate from fundamentals. An A+ entry on a moderate technical readout can be an early setup — but since technicals are not a validated predictor, weigh entry timing against the fundamentals/VaF view, not against the technical number alone.</p>
 
     <h3>5. Check VaF for DeFi &amp; infra coins</h3>
     <p>For coins with a VaF row (protocol tokens): <b>VaF ≥ 105</b> (out of 150) indicates strong token-level value capture. Look at the PQ (protocol quality) vs NF (value capture) split — a high PQ with low NF means the protocol is good but the token doesn't capture value. The <b>CONF</b> grade (A–D) tells you how reliable the research is; machine-only rows cap at B.</p>
@@ -456,8 +455,8 @@ tr.detail .inner{padding:14px 16px;border-bottom:1px solid var(--line2)}
     <h3>7. The Altcoin Season Index for market timing</h3>
     <p>Above <b>75</b> = altcoin season (broad participation). Below <b>25</b> = bitcoin season — altcoin picks are harder to find. When the index is between 25–75, selective picking works. This measures breadth, not magnitude — a few winners can't fake it.</p>
 
-    <h3>8. Cross-check with Composite and F-Score</h3>
-    <p><b>Composite</b> blends 60% technical + 40% fundamental — use it when you want one number that accounts for both price action and on-chain/protocol health. <b>F-Score</b> is the fundamentals-only view (TVL growth, revenue yield, fee acceleration). Fundamentals select, technicals time.</p>
+    <h3>8. Cross-check with the fundamentals view</h3>
+    <p><b>F-Score</b> is the fundamentals-only view for protocol tokens (TVL growth, revenue yield on market cap, fee acceleration, value accrual to holders). <b>VaF</b> is the value-accrual framework (protocol quality + value capture + repricing). Both are measured-data views still pending the ≥60-day walk-forward test — treat them as research, not settled predictions. There is no 60/40 technical+fundamental composite here because the technical leg was rejected empirically.</p>
 
     <h3>Source reliability</h3>
     <p><b>No badge</b> = Binance primary data (most reliable). <b>BYBIT</b> (amber) = tier-2 fallback, all metrics intact. <b>CS FALLBACK</b> (red) = tier-3, price only — volume unavailable. <b>MACRO DEGRADED</b> = macro layer partially filled with neutral values; scores still compute.</p>
@@ -638,7 +637,9 @@ function gradeClass(g){
 function scoreCaption(ts){
   if(ts==null)return'';
   const read=ts>=60?'Strong recent momentum':ts>=40?'Mixed / neutral signals':'Weak — momentum fading';
-  return `<div class="metric-cap">${read} (0–100 scale; higher = stronger recent trend).</div>`;
+  return `<div class="metric-cap"><span style="color:var(--warn);font-weight:600">⚠ NOT VALIDATED — DISPLAY ONLY.</span> `+
+    `Technical setup, not a predictor: momentum &amp; technicals failed the cross-era IC test (coin-flip). `+
+    `Shown as research context, never a buy signal. (0–100 readout; higher = stronger recent trend.)</div>`;
 }
 function gradeCaption(grade){
   const map={'A+':'Best current timing to look at this coin','A':'Good timing, worth a look',
@@ -807,11 +808,13 @@ function cardBody(sym,c){
   const drivers=(c.trend_score_detail?.drivers||[]).slice(0,3);
   const vaf=c.vaf;
   const cov=c.trend_score_detail?.coverage;
-  const cardTip='How this card works: the big number is Trend Score (0–100), driven by four core signals — '+
-    'flow rotation (money-before-price early trigger) 28%, participation/volume 28%, strength vs BTC 24%, '+
+  const cardTip='How this card works: the number is a TECHNICAL SETUP readout (0–100) — DISPLAY ONLY. '+
+    'It is NOT a validated predictor: momentum &amp; technicals failed the cross-era IC test (coin-flip). '+
+    'It is built from four technical signals — flow rotation 28% (WHO is pressing the market — taker-buy share, '+
+    'distinct from volume), participation/volume 28% (how much activity), strength vs BTC 24%, '+
     'volatility compression 12% — with an 8% confirmation filter (breakout + trend consistency). '+
-    'The letter badge is Entry Timing (A+/A/B/Avoid) — timing only, separate from the score. '+
-    'Each row below shows the raw value and, on the right, what that value currently means. '+
+    'The letter badge is Entry Timing (A+/A/B/Avoid) — timing only, separate from the number. '+
+    'For protocol tokens the VaF/F-Score chips are the measured-value view (still pending the ≥60-day test). '+
     'Missing inputs are excluded and the remaining weights renormalized, never filled with zero — '+
     'the Coverage row tells you how many of the 5 components were actually available.';
   return `      <div class="head">
@@ -822,7 +825,7 @@ function cardBody(sym,c){
       <div class="vfrow" data-tip="${c.volume_flow?.detail||'Volume-flow label: where money moves before price realizes it. Display-only — never changes any score.'}"><span class="vfdot ${vfClass(c.volume_flow?.label)}"></span><b class="${vfClass(c.volume_flow?.label)}">${c.volume_flow?.label||'NO SIGNAL'}</b><span class="vfmuted">${c.volume_flow?.qi?'trend QI':'pre-QI'}</span></div>
       <div class="scorerow">
         <b style="color:${ts!=null?scoreColor(ts):'var(--muted)'}">${ts!=null?ts.toFixed(1):'n/a'}</b>
-        <span class="sl" data-tip="Weighted technical composite — four core signals: flow rotation (money-before-price) 28%, participation/volume 28%, strength vs BTC 24%, compression 12%, plus an 8% confirmation filter (breakout + trend consistency). Chips below show each component's push above/below neutral.">trend<br>score</span>
+        <span class="sl" data-tip="Technical setup (0–100) — DISPLAY ONLY, NOT a validated predictor (momentum &amp; technicals failed the cross-era IC test). Four signals: flow rotation 28% (taker-buy share), participation 28% (activity), strength vs BTC 24%, compression 12%, + 8% confirmation filter. Chips below show each component's push above/below neutral.">tech<br>setup</span>
         ${gradeBadge(c.entry_timing,`Entry Timing grade from OTF (Opportunity &amp; Timing): market structure, relative strength vs BTC, execution quality`+(c.entry_timing?.coverage!=null?` — coverage ${Math.round(c.entry_timing.coverage*100)}%`:'')+`. A+ ≥41 · A ≥35 · B ≥28 · else Avoid. Separate from VaF/trend score — timing only, never changes them.`)}
         ${sparkline(closes)}
       </div>
@@ -846,7 +849,7 @@ function cardBody(sym,c){
         <span class="chip" style="border-color:var(--liq)" data-tip="Fundamental composite from DeFiLlama: TVL growth, revenue yield on mcap, fee acceleration, value-accrual share.">F-SCORE <b style="color:${scoreColor(c.fundamental_score)}">${c.fundamental_score}</b></span>
         ${c.fundamental_detail?.value_accrual_ratio!=null?`<span class="chip ${c.fundamental_detail.value_accrual_ratio>=0.5?'p':'n'}" data-tip="Share of protocol revenue that actually reaches token holders (buybacks, burns, fee share) over 30d — measured, not narrated.">VALUE ACCRUAL <b>${Math.round(c.fundamental_detail.value_accrual_ratio*100)}%</b></span>`:''}
         ${c.fundamental_detail?.price_to_fees!=null?`<span class="chip" data-tip="Market cap ÷ annualized protocol fees — the crypto P/E analog. Lower = cheaper per dollar of fees.">P/F <b>${c.fundamental_detail.price_to_fees}×</b></span>`:''}
-        ${c.composite_score!=null?`<span class="chip" data-tip="60% technical + 40% fundamental. Fundamentals select, technicals time.">COMPOSITE <b style="color:${scoreColor(c.composite_score)}">${c.composite_score}</b></span>`:''}
+
       </div>`:''}
       <div class="rows">
         ${row3('RSI-14','14-day RSI (simple average). 55–68 is the momentum sweet spot rewarded by the breakout component; 70+ overbought, 30− oversold.',
@@ -859,7 +862,7 @@ function cardBody(sym,c){
           `<span class="${cls(c.momentum,1e-4,-1e-4)}">${c.momentum!=null?(c.momentum>0?'+':'')+c.momentum.toFixed(5):'n/a'}</span>`, condMomentum(c.momentum))}
         ${row3('Volatility','Standard deviation of daily returns over a 30-day window. Higher = wider daily swings, which widens both upside and risk.',
           `<span class="neu">${c.volatility!=null?(c.volatility*100).toFixed(2)+'%':'n/a'}</span>`, condVolatility(c.volatility))}
-        ${row3('Coverage',"How many of the 5 technical components actually fed this coin's trend score. Two coins with the same score are only directly comparable when their coverage matches.",
+        ${row3('Coverage',"How many of the 5 technical components actually fed this coin's technical readout. Two coins with the same number are only directly comparable when their coverage matches.",
           `<span class="neu">${cov?cov.used+'/'+cov.total:'n/a'}</span>`, condCoverage(cov))}
       </div>
       ${perfPanel(c)}
@@ -1040,8 +1043,8 @@ function render(d,force){
   const spikes=okRows.filter(c=>c.vol_ratio!=null&&c.vol_ratio>=2).length;
   const catal=okRows.filter(c=>c.news&&((c.news.catalysts_pos||[]).length||(c.news.catalysts_neg||[]).length)).length;
   $('stats').innerHTML=`
-    <div class="stat"><span class="sk2">median trend score</span><span class="sv" style="color:${med!=='—'?scoreColor(+med):'var(--muted)'}">${med}</span></div>
-    <div class="stat"><span class="sk2">coins scoring 60+</span><span class="sv">${above}<small style="color:var(--dim);font-size:11px">/${okRows.length}</small></span></div>
+    <div class="stat"><span class="sk2">median tech readout</span><span class="sv" style="color:${med!=='—'?scoreColor(+med):'var(--muted)'}">${med}</span></div>
+    <div class="stat"><span class="sk2">tech setups 60+ (display only)</span><span class="sv">${above}<small style="color:var(--dim);font-size:11px">/${okRows.length}</small></span></div>
     <div class="stat"><span class="sk2">volume spikes ≥2×</span><span class="sv" style="color:${spikes?'var(--liq)':'var(--text)'}">${spikes}</span></div>
     <div class="stat"><span class="sk2">coins with catalysts</span><span class="sv" style="color:${catal?'var(--warn)':'var(--text)'}">${catal}</span></div>`;
 
@@ -1108,7 +1111,7 @@ function render(d,force){
       $('showmore').textContent=`SHOW ${Math.min(100,entries.length-SHOWN)} MORE (${entries.length-SHOWN} hidden)`;}
   }else{
     box.style.display='none';$('tablewrap').style.display='block';
-    const cols=[['#',''],['coin',''],['price',''],['24h','chg24'],['trend','trend_score'],
+    const cols=[['#',''],['coin',''],['price',''],['24h','chg24'],['tech setup','trend_score'],
       ['rsi','rsi','hidem'],['7d vs btc','','hidem'],['vol 24h','vol_24h_usd','hidem'],
       ['vol×','vol_ratio'],['entry','entry_grade'],['sent','news'],['sig','']];
     document.querySelector('.tt thead').innerHTML='<tr>'+cols.map(([l,k,h])=>
