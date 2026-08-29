@@ -654,6 +654,38 @@ function verdictCaption(verdict){
     :'Mixed signal — some strengths, some gaps';
   return `<div class="metric-cap">${read}.</div>`;
 }
+function taPanel(ta){
+  if(!ta||!ta.price)return'';
+  const up=ta.trend_state&&/uptrend/.test(ta.trend_state), dn=ta.trend_state&&/downtrend/.test(ta.trend_state);
+  const maChips=[20,50,100].map(p=>{
+    const v=ta['ma'+p], pv=ta['price_vs_ma'+p];
+    if(v==null)return'';
+    return `<span class="chip ${pv==null?'':pv>0?'p':'n'}">MA${p} <b>${pv!=null?(pv>0?'+':'')+pv+'%':'—'}</b></span>`;
+  }).filter(Boolean).join('');
+  const macd=ta.macd?.state, mCls=/bullish|above/.test(macd||'')?'pos':/bearish|below/.test(macd||'')?'neg':'neu';
+  const rCls=ta.rsi_zone==='momentum'?'pos':(ta.rsi_zone==='overbought'||ta.rsi_zone==='oversold')?'neg':'neu';
+  const bCls=/above|upper/.test(ta.bollinger?.state||'')?'neg':/below|lower/.test(ta.bollinger?.state||'')?'pos':'neu';
+  const maAlignCls=/bullish/.test(ta.ma_alignment||'')?'p':/bearish/.test(ta.ma_alignment||'')?'n':'';
+  const r=ta.range_pos_pct;
+  return `<div style="margin:10px 0 4px;border:1px dashed var(--line);border-radius:8px;padding:8px 10px;background:var(--panel2)">
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.4px">TECHNICAL ANALYSIS</span>
+      <span class="chip" style="color:var(--warn);border-color:var(--warn)">DISPLAY ONLY</span>
+    </div>
+    <div class="metric-cap" data-tip="Descriptive technical readout from the last ~100 daily candles. Technicals were rejected as a predictive signal in the cross-era validation, so this is research context, not a signal.">Additional analysis — not a validated predictor (technicals failed the cross-era IC test).</div>
+    <div style="font-size:10.5px;margin:5px 0">${ta.trend_state?`<span class="${up?'pos':dn?'neg':'neu'}" style="font-weight:600">${ta.trend_state}</span>`:''}${ta.trend_state?' · ':''}<span class="neu">price in 90d range <b>${r!=null?r+'%':'—'}</b></span></div>
+    ${maChips?`<div class="chips" style="margin:0 0 6px">${maChips}${ta.ma_cross?`<span class="chip ${/bullish|golden/.test(ta.ma_cross)?'p':/bearish|death/.test(ta.ma_cross)?'n':''}"><b>${ta.ma_cross}</b></span>`:''}${ta.ma_alignment?`<span class="chip ${maAlignCls}"><b>${ta.ma_alignment}</b></span>`:''}</div>`:''}
+    <div class="rows" style="font-size:10.5px">
+      ${ta.macd?rowTA('MACD',`<span class="${mCls}">${ta.macd.state}</span>`):''}
+      ${ta.rsi_zone?rowTA('RSI zone',`<span class="${rCls}">${ta.rsi_zone}</span>`):''}
+      ${ta.bollinger?rowTA('Bollinger',`<span class="${bCls}">%B ${ta.bollinger.pctB} · ${ta.bollinger.state}</span>`):''}
+      ${ta.atr?rowTA('ATR / volatility',`<span class="neu">${fmtPx(ta.atr.value)} · ${ta.atr.pct}%</span>`):''}
+      ${ta.support?rowTA('Support',`<span class="neu">30d ${fmtPx(ta.support['30d'])} · 90d ${fmtPx(ta.support['90d'])}</span>`):''}
+      ${ta.resistance?rowTA('Resistance',`<span class="neu">30d ${fmtPx(ta.resistance['30d'])} · 90d ${fmtPx(ta.resistance['90d'])}</span>`):''}
+    </div>
+  </div>`;
+}
+function rowTA(k,v){return `<div style="display:flex;justify-content:space-between;gap:10px;padding:1px 0"><span style="color:var(--dim)">${k}</span><span>${v}</span></div>`;}
 /* ── Condition labels ──
    Turn a raw number into what it actually means, so the card explains
    itself without the reader needing to know the thresholds. Each
@@ -866,6 +898,7 @@ function cardBody(sym,c){
           `<span class="neu">${cov?cov.used+'/'+cov.total:'n/a'}</span>`, condCoverage(cov))}
       </div>
       ${perfPanel(c)}
+      ${taPanel(c.ta)}
       <div class="vol">
         <div class="vh"><span class="k" data-tip="Daily quote volume in USDT, closed candles only — today's partial candle is excluded so mornings don't fake a volume collapse.">${c.data_source==='coinstats'?'Volume · history n/a on fallback source':'Volume · 14d (closed candles)'}</span><span class="amt">${c.vol_24h_usd!=null?fmtUsd(c.vol_24h_usd):'n/a'}</span></div>
         ${volbars(vols)}

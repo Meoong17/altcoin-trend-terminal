@@ -69,6 +69,172 @@ def _compute_rsi(closes, period=14):
     return round(100 - (100 / (1 + rs)), 2)
 
 
+def _sma(values, period):
+    if len(values) < period:
+        return None
+    return sum(values[-period:]) / period
+
+
+def _std(values):
+    if not values:
+        return 0.0
+    m = sum(values) / len(values)
+    return (sum((v - m) ** 2 for v in values) / len(values)) ** 0.5
+
+
+def _ema_series(values, period):
+    """Full EMA series (oldest-first). None if insufficient bars."""
+    if len(values) < period:
+        return None
+    k = 2.0 / (period + 1)
+    out = [0.0] * len(values)
+    e = sum(values[:period]) / period
+    out[period - 1] = e
+    for i in range(period, len(values)):
+        e = values[i] * k + e * (1 - k)
+        out[i] = e
+    return out
+
+
+def _atr(highs, lows, closes, period=14):
+    if len(closes) < 2:
+        return None
+    trs = []
+    for i in range(1, len(closes)):
+        tr = max(highs[i] - lows[i],
+                 abs(highs[i] - closes[i - 1]),
+                 abs(lows[i] - closes[i - 1]))
+        trs.append(tr)
+    if len(trs) < period:
+        return None
+    return sum(trs[-period:]) / period
+
+
+def _compute_technical_analysis(closes, highs, lows, quote_volumes, rsi):
+    """
+    Descriptive technical analysis — DISPLAY ONLY, not a validated
+    predictor (momentum/technicals were rejected in the cross-era test).
+    Computed from the available ~100 daily klines: moving averages +
+    cross state, MACD, Bollinger %B, ATR, RSI zone, near-term
+    support/resistance and range position, and a simple HH/HL trend
+    heuristic. All values are descriptive research context.
+    """
+    out = {"bars": len(closes),
+           "note": "descriptive technical analysis — display only, not a validated predictor"}
+    px = closes[-1] if closes else None
+    out["price"] = px
+    if px is None:
+        return out
+
+    # Moving averages + cross state
+    mas = {p: _sma(closes, p) for p in (20, 50, 100)}
+    for p, v in mas.items():
+        out[f"ma{p}"] = round(v, 6) if v is not None else None
+        out[f"price_vs_ma{p}"] = (round((px / v - 1) * 100, 2)
+                                  if v else None)
+    if mas[20] is not None and mas[50] is not None:
+        prev20, prev50 = _sma(closes[:-5], 20), _sma(closes[:-5], 50)
+        if prev20 is not None and prev50 is not None:
+            if prev20 <= prev50 and mas[20] > mas[50]:
+                cross = "golden cross (MA20 > MA50)"
+            elif prev20 >= prev50 and mas[20] < mas[50]:
+                cross = "death cross (MA20 < MA50)"
+            else:
+                cross = "bullish (MA20 > MA50)" if mas[20] > mas[50] else \
+                        "bearish (MA20 < MA50)" if mas[20] < mas[50] else "neutral"
+        else:
+            cross = "bullish" if mas[20] > mas[50] else "bearish"
+        out["ma_cross"] = cross
+        present = [v for v in mas.values() if v is not None]
+        if present and px > max(present):
+            out["ma_alignment"] = "price above all MAs — bullish alignment"
+        elif present and px < min(present):
+            out["ma_alignment"] = "price below all MAs — bearish alignment"
+        else:
+            out["ma_alignment"] = "price between MAs — mixed"
+
+    # MACD (12/26/9)
+    if len(closes) >= 26:
+        e12, e26 = _ema_series(closes, 12), _ema_series(closes, 26)
+        macd_series = [a - b for a, b in zip(e12, e26)]
+        macd_valid = macd_series[25:]
+        sig = _ema_series(macd_valid, 9)
+        line, signal = macd_series[-1], sig[-1]
+        hist = line - signal
+        out["macd"] = {
+            "line": round(line, 6), "signal": round(signal, 6),
+            "hist": round(hist, 6),
+        }
+        if len(macd_series) >= 2 and len(sig) >= 2:
+            prev_hist = macd_series[-2] - sig[-2]
+            if hist > 0 and prev_hist <= 0:
+                out["macd"]["state"] = "bullish cross (histogram turned +)"
+            elif hist < 0 and prev_hist >= 0:
+                out["macd"]["state"] = "bearish cross (histogram turned −)"
+            else:
+                out["macd"]["state"] = ("above signal — bullish momentum"
+                                        if hist > 0 else
+                                        "below signal — bearish momentum")
+
+    # Bollinger (20, 2)
+    if mas[20] is not None and len(closes) >= 20:
+        band = mas[20]
+        sd = _std(closes[-20:])
+        upper, lower = band + 2 * sd, band - 2 * sd
+        pctB = (px - lower) / (upper - lower) if upper > lower else 0.5
+        if px > upper:
+            bstate = "above upper band (overextended)"
+        elif px < lower:
+            bstate = "below lower band (oversold stretch)"
+        elif pctB > 0.8:
+            bstate = "upper band zone"
+        elif pctB < 0.2:
+            bstate = "lower band zone"
+        else:
+            bstate = "within bands (middle)"
+        out["bollinger"] = {"upper": round(upper, 6), "mid": round(band, 6),
+                            "lower": round(lower, 6), "pctB": round(pctB, 2),
+                            "state": bstate}
+
+    # ATR / volatility
+    atr = _atr(highs, lows, closes)
+    if atr is not None:
+        out["atr"] = {"value": round(atr, 6),
+                      "pct": round(atr / px * 100, 2) if px else None}
+
+    # RSI zone
+    if rsi is not None:
+        out["rsi_zone"] = ("overbought" if rsi >= 70 else "oversold" if rsi <= 30
+                           else "momentum" if rsi >= 55 else "neutral")
+
+    # Support / resistance + range position (near-term 30d, wider 90d)
+    n30 = min(30, len(closes))
+    n90 = min(90, len(closes))
+    res30, sup30 = max(highs[-n30:]), min(lows[-n30:])
+    res90, sup90 = max(highs[-n90:]), min(lows[-n90:])
+    out["support"] = {"30d": round(sup30, 6), "90d": round(sup90, 6)}
+    out["resistance"] = {"30d": round(res30, 6), "90d": round(res90, 6)}
+    if res90 > sup90:
+        out["range_pos_pct"] = round((px - sup90) / (res90 - sup90) * 100, 1)
+
+    # Trend heuristic: compare recent half vs earlier half (HH/HL vs LH/LL)
+    n = min(90, len(closes))
+    half = n // 2
+    if half >= 5:
+        recent_hh = max(highs[-half:]) >= max(highs[-n:-half])
+        recent_hl = min(lows[-half:]) >= min(lows[-n:-half])
+        recent_lh = max(highs[-half:]) <= max(highs[-n:-half])
+        recent_ll = min(lows[-half:]) <= min(lows[-n:-half])
+        if recent_hh and recent_hl:
+            out["trend_state"] = "uptrend (higher highs & higher lows)"
+        elif recent_lh and recent_ll:
+            out["trend_state"] = "downtrend (lower highs & lower lows)"
+        else:
+            out["trend_state"] = "range / mixed"
+
+    return out
+
+
 def _compute_volume_metrics(quote_volumes):
     """
     Volume indicator from daily quote volumes (oldest-first, USDT).
@@ -102,6 +268,63 @@ def _compute_volume_metrics(quote_volumes):
         "vol_avg_7d_usd": round(avg_7d, 0),
         "vol_ratio": round(vol_24h / avg_7d, 3),
         "vol_trend": round(avg_3d / avg_7d, 3),
+    }
+
+
+def _compute_flow_metrics(quote_volumes, taker_buy_quotes):
+    """
+    DIRECTIONAL FLOW — conceptually distinct from volume/participation.
+
+    Volume (above) answers "how much activity"; FLOW answers "WHO is
+    pressing the market and WHICH WAY". It is measured from the taker-buy
+    share: the fraction of traded quote-volume that was executed by
+    AGGRESSIVE BUYERS (takers crossing the spread to hit the ask) rather
+    than by passive/seller-initiated trades. A buy-share above 0.5 means
+    buyers are more eager to transact; below 0.5 means sellers are
+    pressing. The CHANGE in that share is what makes the model sensitive
+    to the EARLY phase of a move — before price has fully re-priced.
+
+    Uses CLOSED candles only (last in-progress candle dropped), matching
+    _compute_volume_metrics. Returns None when taker-buy is not available
+    (e.g. OKX/Bybit fallback tiers have no taker-buy field) — honest
+    missing-data, never fabricated.
+
+    Returns dict (or None if < 8 closed candles or no taker-buy data):
+        buy_share:        taker_buy / total volume on the last CLOSED day
+                          (>0.5 = buyers pressing, <0.5 = sellers)
+        buy_share_3d:     mean buy-share over last 3 closed days (smoother)
+        buy_share_7d:     mean buy-share over last 7 closed days (baseline)
+        flow_trend:       buy_share_3d / buy_share_7d — is buy pressure
+                          building (early accumulation) or fading?
+        flow_direction:   "BUY" if buy_share_3d > 0.52, "SELL" if < 0.48,
+                          else "NEUTRAL" (thresholded, for display)
+    """
+    closed_v = quote_volumes[:-1]  # drop in-progress candle
+    closed_t = taker_buy_quotes[:-1]
+    if len(closed_v) < 8 or not closed_t or any(t is None for t in closed_t):
+        return None
+    # Buy-share per closed day: taker-buy / total (both quote volume).
+    shares = [t / v if v and t is not None else None
+              for v, t in zip(closed_v, closed_t)]
+    shares = [s for s in shares if s is not None]
+    if len(shares) < 7:
+        return None
+    cur, last3, last7 = shares[-1], sum(shares[-3:]) / 3, sum(shares[-7:]) / 7
+    if last7 <= 0:
+        return None
+    flow_trend = last3 / last7
+    if last3 > 0.52:
+        direction = "BUY"
+    elif last3 < 0.48:
+        direction = "SELL"
+    else:
+        direction = "NEUTRAL"
+    return {
+        "buy_share": round(cur, 4),
+        "buy_share_3d": round(last3, 4),
+        "buy_share_7d": round(last7, 4),
+        "flow_trend": round(flow_trend, 3),
+        "flow_direction": direction,
     }
 
 
@@ -268,13 +491,22 @@ def fetch_klines(symbol, interval="1d", limit=100):
     (public endpoint) — this is what makes multi-coin support cheap: the
     exact same function serves ETHUSDT, SOLUSDT, or any other pair.
 
-    Returns list of (timestamp_ms, high, low, close_price, quote_volume) oldest-first,
-    or None on failure (network error, invalid/unlisted symbol, rate limit).
+    Returns list of (timestamp_ms, high, low, close_price, quote_volume,
+    taker_buy_quote_volume) oldest-first, or None on failure (network
+    error, invalid/unlisted symbol, rate limit).
 
     quote_volume is kline index 7 (volume in the QUOTE asset, i.e. USDT for
     *USDT pairs) rather than index 5 (base-asset volume) — quote volume is
     directly comparable across coins ("$X traded"), base volume is not
     (1M SOL != 1M PEPE in any meaningful sense).
+
+    taker_buy_quote_volume is kline index 10 — the QUOTE volume that was
+    executed by AGGRESSIVE BUYERS (takers hitting the ask). This is the
+    DIRECTIONAL flow signal: taker-buy / total-volume per bar answers
+    "who is pressing the market (buyers vs sellers) and which way", which
+    is conceptually distinct from raw volume (activity). Binance provides
+    it free on the public endpoint. Fallback tiers (OKX/Bybit) have no
+    taker-buy field and return None for this element.
     """
     try:
         r = requests.get(
@@ -284,7 +516,8 @@ def fetch_klines(symbol, interval="1d", limit=100):
         )
         r.raise_for_status()
         klines = r.json()
-        return [(int(k[0]), float(k[2]), float(k[3]), float(k[4]), float(k[7])) for k in klines]
+        return [(int(k[0]), float(k[2]), float(k[3]), float(k[4]), float(k[7]),
+                 float(k[10])) for k in klines]
     except (requests.RequestException, ValueError, KeyError, IndexError) as e:
         print(f"[Analyzer] {symbol} kline fetch failed: {e}", file=sys.stderr)
         return None
@@ -366,15 +599,23 @@ def analyze_coin(symbol, btc_closes=None, klines=None, eth_closes=None):
     if klines is None:
         return {"symbol": symbol, "status": "unavailable"}
 
-    highs = [h for _, h, _, _, _ in klines]
-    lows = [l for _, _, l, _, _ in klines]
-    closes = [c for _, _, _, c, _ in klines]
-    quote_volumes = [v for _, _, _, _, v in klines]
+    highs = [h for _, h, _, _, _, _ in klines]
+    lows = [l for _, _, l, _, _, _ in klines]
+    closes = [c for _, _, _, c, _, _ in klines]
+    quote_volumes = [v for _, _, _, _, v, _ in klines]
+    taker_buy_quotes = [t for _, _, _, _, _, t in klines]
     rvm = _compute_rvm(closes)
     rsi = _compute_rsi(closes)
     vol = _compute_volume_metrics(quote_volumes)
     from altcoin.features import compute_feature_set
     feats = compute_feature_set(highs, lows, closes, quote_volumes[:-1], btc_closes)
+
+    # DIRECTIONAL FLOW (distinct from volume/participation). Volume tells
+    # us there is activity; flow tells us WHO is pressing the market and
+    # WHICH WAY — via taker-buy share (aggressive buyers hitting the ask)
+    # vs total volume. Computed from closed candles only. None when the
+    # source tier has no taker-buy field (OKX/Bybit fallback).
+    flow = _compute_flow_metrics(quote_volumes, taker_buy_quotes)
 
     # 90d relative performance for the Altcoin Season Index. Uses the
     # full 100-candle window; None (never a guess) when the coin or the
@@ -397,6 +638,8 @@ def analyze_coin(symbol, btc_closes=None, klines=None, eth_closes=None):
         "closes_30d": [round(c, 6) for c in closes[-30:]],
         "features": feats,
         "volumes_30d": [round(v, 0) for v in quote_volumes[:-1]][-30:],
+        "flow": flow,
+        "ta": _compute_technical_analysis(closes, highs, lows, quote_volumes, rsi),
         **(rvm or {}),
         **(vol or {}),
     }
@@ -436,7 +679,7 @@ def analyze_multiple_coins(symbols, btc_symbol="BTCUSDT", eth_symbol="ETHUSDT"):
         dict {symbol: analyze_coin() result}
     """
     btc_klines = fetch_klines(btc_symbol)
-    btc_closes = [c for _, _, _, c, _ in btc_klines] if btc_klines else None
+    btc_closes = [c for _, _, _, c, _, _ in btc_klines] if btc_klines else None
     if btc_closes is None:
         print(f"[Analyzer] WARNING: {btc_symbol} fetch failed — "
               f"btc_ratio_trend and vs-BTC performance will be unavailable this cycle",
@@ -446,7 +689,7 @@ def analyze_multiple_coins(symbols, btc_symbol="BTCUSDT", eth_symbol="ETHUSDT"):
     # benchmark being reused as btc_closes (it never is) -- always a
     # distinct fetch, but still just ONE call shared across all symbols.
     eth_klines = fetch_klines(eth_symbol)
-    eth_closes = [c for _, _, _, c, _ in eth_klines] if eth_klines else None
+    eth_closes = [c for _, _, _, c, _, _ in eth_klines] if eth_klines else None
     if eth_closes is None:
         print(f"[Analyzer] WARNING: {eth_symbol} fetch failed — "
               f"vs-ETH performance will be unavailable this cycle", file=sys.stderr)
@@ -474,11 +717,11 @@ def analyze_multiple_coins(symbols, btc_symbol="BTCUSDT", eth_symbol="ETHUSDT"):
         okx_btc_closes = btc_closes
         if okx_btc_closes is None:
             okx_btc = fetch_klines_okx(btc_symbol)
-            okx_btc_closes = [c for _, _, _, c, _ in okx_btc] if okx_btc else None
+            okx_btc_closes = [c for _, _, _, c, _, _ in okx_btc] if okx_btc else None
         okx_eth_closes = eth_closes
         if okx_eth_closes is None:
             okx_eth = fetch_klines_okx(eth_symbol)
-            okx_eth_closes = [c for _, _, _, c, _ in okx_eth] if okx_eth else None
+            okx_eth_closes = [c for _, _, _, c, _, _ in okx_eth] if okx_eth else None
         for symbol in failed:
             kl = fetch_klines_okx(symbol)
             if kl:
@@ -500,11 +743,11 @@ def analyze_multiple_coins(symbols, btc_symbol="BTCUSDT", eth_symbol="ETHUSDT"):
         bb_btc_closes = btc_closes
         if bb_btc_closes is None:
             bb_btc = fetch_klines_bybit(btc_symbol)
-            bb_btc_closes = [c for _, _, _, c, _ in bb_btc] if bb_btc else None
+            bb_btc_closes = [c for _, _, _, c, _, _ in bb_btc] if bb_btc else None
         bb_eth_closes = eth_closes
         if bb_eth_closes is None:
             bb_eth = fetch_klines_bybit(eth_symbol)
-            bb_eth_closes = [c for _, _, _, c, _ in bb_eth] if bb_eth else None
+            bb_eth_closes = [c for _, _, _, c, _, _ in bb_eth] if bb_eth else None
         for symbol in failed:
             kl = fetch_klines_bybit(symbol)
             if kl:
@@ -614,6 +857,45 @@ if __name__ == "__main__":
     assert vm_fade["vol_trend"] < 1.0, "declining participation should read vol_trend < 1"
     assert vm_fade["vol_ratio"] < 0.6, "last closed day well below 7d avg"
     print("✅ PASS: volume metrics — spike detection, fade detection, incomplete-candle exclusion\n")
+
+    # DIRECTIONAL FLOW vs volume — conceptually distinct (volume = activity,
+    # flow = WHO presses / WHICH WAY via taker-buy share). _compute_flow_metrics
+    # must separate from volume, and score_flow_rotation must reward strong
+    # AND rising buy pressure (early phase) while penalizing sell pressure.
+    import os as _fos, sys as _fsys
+    _fsys.path.insert(0, _fos.path.dirname(_fos.path.dirname(_fos.path.abspath(__file__))))
+    from altcoin.features import score_flow_rotation
+    # Buyers pressing hard and rising: base 24d @0.50, then a clear ramp so
+    # the last 3 CLOSED days (in-progress candle dropped) read ~0.60+.
+    buy_vols  = [1e9]*30
+    buy_taker = [0.50*buy_vols[i] for i in range(24)] \
+        + [0.52*buy_vols[24], 0.55*buy_vols[25], 0.58*buy_vols[26],
+           0.62*buy_vols[27], 0.65*buy_vols[28], 0.68*buy_vols[29]]
+    fm = _compute_flow_metrics(buy_vols, buy_taker)
+    print(f"Flow metrics (buy pressure rising): {fm}")
+    assert fm is not None, "taker-buy present -> flow must compute"
+    assert fm["buy_share_3d"] > 0.58, "rising buy pressure must read high buy_share_3d"
+    assert fm["flow_trend"] > 1.0, "rising buy share 3d-vs-7d -> flow_trend > 1"
+    assert fm["flow_direction"] == "BUY"
+    score_buy = score_flow_rotation(fm["buy_share_3d"], fm["buy_share_7d"], fm["flow_trend"])
+    # Sellers pressing hard and fading: base 24d @0.50, then clear decline.
+    sell_taker = [0.50*buy_vols[i] for i in range(24)] \
+        + [0.48*buy_vols[24], 0.45*buy_vols[25], 0.42*buy_vols[26],
+           0.40*buy_vols[27], 0.38*buy_vols[28], 0.36*buy_vols[29]]
+    fm_s = _compute_flow_metrics(buy_vols, sell_taker)
+    print(f"Flow metrics (sell pressure): {fm_s}")
+    assert fm_s["flow_direction"] == "SELL"
+    score_sell = score_flow_rotation(fm_s["buy_share_3d"], fm_s["buy_share_7d"], fm_s["flow_trend"])
+    print(f"score_buy={score_buy} score_sell={score_sell}")
+    assert score_buy is not None and score_sell is not None
+    assert score_buy > score_sell, "rising buy pressure must outscore sell pressure"
+    assert score_buy > 70, "strong+rising buy pressure is the early-accumulation signal"
+    assert score_sell < 50, "sell pressure must read below neutral"
+    # Honest missing-data: no taker-buy (OKX/Bybit tier) -> flow is None.
+    assert _compute_flow_metrics(buy_vols, [None]*len(buy_vols)) is None, \
+        "no taker-buy -> flow None, component renormalized, never fabricated"
+    assert score_flow_rotation(None, None, None) is None
+    print("✅ PASS: directional flow — separate from volume, buy-press rising > sell, honest None on missing taker-buy\n")
 
     # Top-N discovery filter: pure-function test with synthetic ticker rows.
     fake_tickers = [
@@ -837,8 +1119,8 @@ if __name__ == "__main__":
     ]
     kl = rows_to_klines(bybit_rows)
     assert len(kl) == 3 and kl[0][0] < kl[1][0] < kl[2][0], "must be oldest-first"
-    assert kl[-1] == (1720800000000, 105.0, 99.0, 104.0, 1250000.0), \
-        "tuple shape must be (ts, high, low, close, QUOTE volume/turnover)"
+    assert kl[-1] == (1720800000000, 105.0, 99.0, 104.0, 1250000.0, None), \
+        "tuple shape (ts, high, low, close, QUOTE volume/turnover, taker_buy=None)"
 
     # Parity: identical synthetic data through the injected-klines path
     # must produce identical metrics to the primary path — the whole point
@@ -846,10 +1128,14 @@ if __name__ == "__main__":
     synth = []
     ts0 = 1700000000000
     for i, c in enumerate(up):  # reuse the 100-candle uptrend series
-        synth.append((ts0 + i*86400000, c*1.02, c*0.98, c, 2.5e9 if i == 98 else (5e6 if i == 99 else 1e9)))
+        # 6-tuple: taker-buy ~55% of volume (synthetic mid-range buy pressure)
+        synth.append((ts0 + i*86400000, c*1.02, c*0.98, c,
+                      2.5e9 if i == 98 else (5e6 if i == 99 else 1e9),
+                      1.4e9 if i == 98 else (3e6 if i == 99 else 0.55e9)))
     res_injected = analyze_coin("TESTUSDT", btc_closes=flat, klines=synth)
     assert res_injected["status"] == "ok"
     assert res_injected["rsi"] is not None and res_injected["vol_ratio"] is not None
+    assert res_injected["flow"] is not None, "directional flow must be computed from taker-buy"
     assert res_injected["features"]["prox_30d_high"] == 1.0
     assert res_injected["vol_ratio"] > 2.0, "volume metrics fully alive on injected klines"
     print("✅ PASS: Bybit tier — newest-first reversal, turnover-as-quote-volume, full metric parity\n")
@@ -1111,8 +1397,8 @@ if __name__ == "__main__":
     ]
     kl = okx_rows_to_klines(okx_rows)
     assert len(kl) == 3 and kl[0][0] < kl[1][0] < kl[2][0], "must be oldest-first"
-    assert kl[-1] == (1720800000000, 105.0, 99.0, 104.0, 1250000.0), \
-        "tuple shape (ts, high, low, close, QUOTE volume from volCcy index 6)"
+    assert kl[-1] == (1720800000000, 105.0, 99.0, 104.0, 1250000.0, None), \
+        "tuple shape (ts, high, low, close, QUOTE volume from volCcy index 6, taker_buy=None)"
     print("\u2705 PASS: OKX fallback tier \u2014 symbol mapping, newest-first reversal, quote-volume parsing (now actually wired into the chain, was dead code)\n")
 
     # GLF China M2 date-guard (fix for the bug flagged "PENDING" since the
@@ -1181,8 +1467,8 @@ if __name__ == "__main__":
     kl = parse_kline_csv_rows(rows)
     assert len(kl) == 2, "malformed row must be dropped, not crash or fabricate"
     assert kl[0][0] < kl[1][0], "must be sorted ascending by timestamp"
-    assert kl[-1] == (1700000000000, 105.0, 98.0, 103.0, 51000.0), \
-        "tuple shape (ts, high, low, close, quote_volume) from documented column order"
+    assert kl[-1] == (1700000000000, 105.0, 98.0, 103.0, 51000.0, 1.0), \
+        "tuple shape (ts, high, low, close, quote_volume, taker_buy_quote) from documented column order"
 
     # Technical-only reconstruction: macro excluded cleanly, coverage reflects it
     import random as _rbk; _rbk.seed(5)
@@ -1191,7 +1477,8 @@ if __name__ == "__main__":
     for i in range(120):
         px *= (1 + _rbk.gauss(0.001, 0.02))
         ts = 1700000000000 + i * 86400000
-        synth_klines.append((ts, px * 1.02, px * 0.98, px, 5e8 * _rbk.uniform(0.7, 1.3)))
+        synth_klines.append((ts, px * 1.02, px * 0.98, px, 5e8 * _rbk.uniform(0.7, 1.3),
+                             3e8 * _rbk.uniform(0.45, 0.6)))
     btc_by_date = {}
     bpx = 50000.0
     for i in range(120):
