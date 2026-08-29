@@ -411,7 +411,7 @@ details.techx[open] summary::before{content:'▾ ';color:var(--liq)}
     </div>
     <label class="cl" for="sort">sort</label>
     <select id="sort">
-      <option value="trend_score">tech setup (display only)</option>
+      <option value="trend_score">trend (Uptrend/Downtrend/Range)</option>
       <option value="vol_ratio">volume spike (ratio)</option>
       <option value="chg24">24h change</option>
       <option value="vol_24h_usd">volume 24h</option>
@@ -1208,7 +1208,7 @@ function render(d,force){
       $('showmore').textContent=`SHOW ${Math.min(100,entries.length-SHOWN)} MORE (${entries.length-SHOWN} hidden)`;}
   }else{
     box.style.display='none';$('tablewrap').style.display='block';
-    const cols=[['#',''],['coin',''],['price',''],['24h','chg24'],['tech setup','trend_score'],
+    const cols=[['#',''],['coin',''],['price',''],['24h','chg24'],['trend','trend_score'],
       ['rsi','rsi','hidem'],['7d vs btc','','hidem'],['vol 24h','vol_24h_usd','hidem'],
       ['vol×','vol_ratio'],['entry','entry_grade'],['sent','news'],['sig','']];
     document.querySelector('.tt thead').innerHTML='<tr>'+cols.map(([l,k,h])=>
@@ -1222,6 +1222,8 @@ function render(d,force){
       const closes=c.closes_30d;
       const chg24=closes&&closes.length>2?(closes[closes.length-1]/closes[closes.length-2]-1):null;
       const ts=c.trend_score, n=c.news;
+      const _ts=(c.ta||{}).trend_state||'', _tup=/uptrend/.test(_ts), _tdn=/downtrend/.test(_ts);
+      const _tw=_tup?'Uptrend':_tdn?'Downtrend':'Range', _tc=_tup?'pos':_tdn?'neg':'neu';
       const sent=n&&n.sentiment!=null?n.sentiment:null;
       const sdot=sent==null?'var(--dim)':sent>15?'var(--up)':sent<-15?'var(--down)':'var(--warn)';
       const cata=n?[(n.catalysts_pos||[]).map(x=>`<span class="pos">${x}</span>`).join(' '),
@@ -1236,8 +1238,7 @@ function render(d,force){
         <td><span class="tsym">${sym.replace('USDT','')}<small> ${c.groups?c.groups[0].toUpperCase():''}</small></span></td>
         <td>${fmtPx(c.latest_price)}</td>
         <td class="${cls(chg24,0,0)}">${chg24!=null?pct(chg24):'—'}</td>
-        <td><span class="tbar"><span style="color:${ts!=null?scoreColor(ts):'var(--muted)'};font-weight:700">${ts!=null?ts.toFixed(1):'—'}</span>
-          <span class="bg"><i style="width:${ts||0}%;background:${ts!=null?scoreColor(ts):'transparent'}"></i></span></span></td>
+        <td class="${_tc}" style="font-weight:700;font-size:10.5px">${_tw}</td>
         <td class="hidem ${c.rsi!=null&&(c.rsi>=70||c.rsi<=30)?'wn':''}">${c.rsi??'—'}</td>
         <td class="hidem ${cls(c.performance?.vs_btc_7d,0,0)}">${pctOrDash(c.performance?.vs_btc_7d)}</td>
         <td class="hidem">${c.vol_24h_usd!=null?fmtUsd(c.vol_24h_usd):'—'}</td>
