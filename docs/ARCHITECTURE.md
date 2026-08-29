@@ -33,7 +33,9 @@ collect.py
   │    compute_performance() vs BTC/ETH — same functions regardless │
   │    of which tier served the coin                                │
   │                                                                  │
-  ├─ altcoin/features.py     → Trend Score v2 + additive drivers    │
+  ├─ altcoin/features.py     → Trend Score v3 (core-signal: flow      │
+  │                            rotation + participation + rel strength  │
+  │                            + compression, + confirmation filter)    │
   ├─ altcoin/regime.py       → regime state + hysteresis            │
   ├─ altcoin/fundamentals.py → F-score (DeFi/infra coins only)       │
   ├─ altcoin/vaf.py          → VaF v1.0 (DeFi/infra coins only)      │

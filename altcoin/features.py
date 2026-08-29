@@ -210,12 +210,18 @@ def compute_feature_set(highs, lows, closes, quote_volumes, btc_closes):
 
 # ── Composite score v2 with explainable drivers (blueprint §6 shape) ──
 
+# Core signal design (user directive, 2026-08): the TREND SCORE is driven
+# by FOUR core components — Flow Rotation (inflow/outflow early trigger),
+# Participation (volume), Relative Strength vs BTC, and Compression (vol
+# setup). Other technicals (breakout, trend consistency) are CONFIRMATION /
+# filter, folded into a small weighted "confirmation" component rather than
+# equal core drivers. Weights sum to 1.0 and renormalize on missing data.
 WEIGHTS = {
-    "breakout": 0.30,
-    "rel_strength": 0.30,
-    "trend_consistency": 0.20,
-    "compression": 0.10,
-    "macro": 0.10,
+    "flow_rotation": 0.28,   # core — inflow/outflow rotation early trigger
+    "participation": 0.28,   # core — volume participation
+    "rel_strength": 0.24,    # core — relative strength vs BTC
+    "compression": 0.12,     # core — volatility-compression setup
+    "confirmation": 0.08,    # filter — breakout + trend consistency
 }
 
 
@@ -223,7 +229,48 @@ def _clip01(x):
     return max(0.0, min(1.0, x))
 
 
-def score_components(f, rsi, macro_component):
+def score_participation(vol_ratio, vol_trend):
+    """Volume-participation component (0-100). Volume is the confirmation
+    leg of a trend: rising participation (vol_trend 3d/7d > 1) plus a
+    spike (vol_ratio 24h/7d > 1) strengthen a move; drying volume weakens
+    it. Makes volume an explicit part of the trend score (user request).
+    None-safe: returns None if neither input is available (component then
+    excluded, weights renormalized)."""
+    parts = []
+    if vol_trend is not None:
+        parts.append(100 * _clip01((vol_trend - 0.9) / 0.4))   # 1.3 -> 100, 0.9 -> 0
+    if vol_ratio is not None:
+        parts.append(100 * _clip01((vol_ratio - 0.8) / 1.2))   # 2.0 -> 100, 0.8 -> 0
+    if not parts:
+        return None
+    return round(sum(parts) / len(parts), 1)
+
+
+def score_flow_rotation(vol_ratio, vol_trend, prox_30d_high):
+    """Inflow/outflow rotation early-trigger component (0-100). Proxied
+    from volume direction vs price position (net-buy / exchange-flow legs
+    are NOT free-tier, so this is an honest proxy, never a fabricated
+    order-flow number):
+      INFLOW  : volume spiking (vol_ratio>=1.2) while price still low in
+                its 30d range (<0.5) -> money rotating IN before price
+                reprises ('money before price' early trigger) -> high
+      OUTFLOW : volume spiking while price already extended (>=0.85) ->
+                distribution risk -> low; also drying participation -> low
+      NEUTRAL : no rotation signal -> mid.
+    User requested this inflow/outflow rotation be computed as an early
+    trigger. None-safe."""
+    if vol_ratio is None or prox_30d_high is None:
+        return None
+    if vol_ratio >= 1.2 and prox_30d_high < 0.5:
+        return 85.0   # inflow: volume before price
+    if vol_ratio >= 1.2 and prox_30d_high >= 0.85:
+        return 30.0   # outflow/distribution: volume after price ran
+    if vol_trend is not None and vol_trend < 0.95:
+        return 40.0   # drying participation
+    return 55.0
+
+
+def score_components(f, rsi, participation=None, flow_rotation=None):
     """
     Each component scored 0-100 from the feature dict; None components
     are excluded and remaining weights renormalized (same missing-data
@@ -234,19 +281,23 @@ def score_components(f, rsi, macro_component):
     """
     comps = {}
 
-    parts = []
+    # Confirmation / filter components (breakout + trend consistency),
+    # folded into one weighted "confirmation" component — they confirm the
+    # core signal but do not drive it.
+    confirm_parts = []
+    b_parts = []
     if f.get("prox_30d_high") is not None:
-        parts.append((0.40, 100 * _clip01(f["prox_30d_high"])))
+        b_parts.append((0.40, 100 * _clip01(f["prox_30d_high"])))
     z = rsi_zone_score(rsi)
     if z is not None:
-        parts.append((0.20, 100 * z))
+        b_parts.append((0.20, 100 * z))
     if f.get("vol_pct_90d") is not None:
-        parts.append((0.25, f["vol_pct_90d"]))
+        b_parts.append((0.25, f["vol_pct_90d"]))
     if f.get("atr_expansion") is not None:
-        parts.append((0.15, 100 * _clip01((f["atr_expansion"] - 0.8) / 0.8)))
-    if parts:
-        tw = sum(w for w, _ in parts)
-        comps["breakout"] = sum(w * v for w, v in parts) / tw
+        b_parts.append((0.15, 100 * _clip01((f["atr_expansion"] - 0.8) / 0.8)))
+    if b_parts:
+        tw = sum(w for w, _ in b_parts)
+        confirm_parts.append((0.5, sum(w * v for w, v in b_parts) / tw))  # breakout
 
     if f.get("ir_7d") is not None:
         comps["rel_strength"] = 100 * _clip01(0.5 + f["ir_7d"] / 4.0)  # IR ±2σ spans the scale
@@ -262,14 +313,20 @@ def score_components(f, rsi, macro_component):
         tparts.append((0.5, 100 * (0.7 * slope_score + 0.3 * streak_bonus)))
     if tparts:
         tw = sum(w for w, _ in tparts)
-        comps["trend_consistency"] = sum(w * v for w, v in tparts) / tw
+        confirm_parts.append((0.5, sum(w * v for w, v in tparts) / tw))  # trend consistency
+
+    if confirm_parts:
+        tw = sum(w for w, _ in confirm_parts)
+        comps["confirmation"] = sum(w * v for w, v in confirm_parts) / tw
 
     if f.get("compression_setup") is not None:
         comps["compression"] = 85.0 if f["compression_setup"] else (
             60.0 if (f.get("bbw_pct_90d") is not None and f["bbw_pct_90d"] < 20) else 40.0)
 
-    if macro_component is not None:
-        comps["macro"] = max(0.0, min(100.0, macro_component))
+    if participation is not None:
+        comps["participation"] = max(0.0, min(100.0, participation))
+    if flow_rotation is not None:
+        comps["flow_rotation"] = max(0.0, min(100.0, flow_rotation))
 
     if not comps:
         return None, [], {"used": 0, "total": len(WEIGHTS), "weight_covered": 0.0}

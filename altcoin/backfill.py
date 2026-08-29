@@ -191,7 +191,7 @@ def reconstruct_daily_rows(symbol, klines, btc_closes_by_ts, min_history=91):
 
         rsi = _compute_rsi(c_slice)
         feats = compute_feature_set(h_slice, l_slice, c_slice, v_slice, btc_slice)
-        score, drivers, coverage = score_components(feats, rsi, macro_component=None)
+        score, drivers, coverage = score_components(feats, rsi)
 
         rows.append({
             "date": date, "symbol": symbol, "status": "ok",

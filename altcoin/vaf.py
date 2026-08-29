@@ -214,10 +214,18 @@ def score_valuation_dislocation(raw, mcap, peer_pf):
 
 def score_market_structure(trend_drivers):
     comps = {d["component"]: d["value"] for d in (trend_drivers or [])}
-    vals = [comps[k] for k in ("breakout", "trend_consistency") if k in comps]
+    # Core-signal redesign (2026-08): score_components no longer emits
+    # separate "breakout"/"trend_consistency" drivers — they are folded into
+    # the single "confirmation" filter component. Market structure (the OTF
+    # chart-structure leg) reads that confirmation component instead; falls
+    # back to the old names only if present (stale/backfilled rows).
+    vals = [comps[k] for k in ("confirmation", "breakout", "trend_consistency")
+            if k in comps]
     if not vals:
         return None
-    return _m(12, (sum(vals) / len(vals)) / 100.0, "auto", "score-v2 breakout + trend")
+    return _m(12, (sum(vals) / len(vals)) / 100.0, "auto",
+              "confirmation (breakout + trend) filter" if "confirmation" in comps
+              else "score-v2 breakout + trend")
 
 
 def score_relative_strength(features):

@@ -33,7 +33,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from altcoin.analyzer import (analyze_multiple_coins, discover_top_symbols, compute_alt_season,
                               rank_symbols_by_volume, fetch_klines)
-from altcoin.features import score_components, classify_volume_flow
+from altcoin.features import (score_components, classify_volume_flow,
+                              score_participation, score_flow_rotation)
 from altcoin.regime import classify_regime
 from altcoin.history import (append_cycle, stats as history_stats,
                              regime_streak, macro_series, get_model_version)
@@ -147,16 +148,36 @@ def compute_coin_trend_score(coin_result, glf_score, repo_stress_score):
     # Macro backdrop: GLF > 50 = liquidity expansive = generally
     # supportive of risk assets including alts. Repo stress > 0.5 =
     # funding market stress = generally bearish/risk-off.
+    # NOTE (audit 2026-08, cf. 1.docx §2/§7 + analysis/macro_constant_test.py):
+    # macro_component is the SAME global value for every coin in a snapshot,
+    # so in v2 it adds zero cross-sectional ranking information and is NOT fed
+    # into the coin score anymore (regime.py owns GLF/repo as the regime/
+    # context layer). It is kept here only for the v1-legacy fallback blend
+    # (degraded rows with no feature history) and for display.
     macro_component = (glf_score if glf_score is not None else 50.0)
     macro_component -= (repo_stress_score - 0.5) * 40 if repo_stress_score is not None else 0
 
     # ── Score v2: blueprint §2.2A composite when the feature set exists ──
     feats = coin_result.get("features") or {}
+
+    # Volume / flow-rotation components (user request): make volume an
+    # explicit part of the trend score and add the inflow/outflow rotation
+    # early-trigger. Both are coin-specific (vol_ratio, vol_trend,
+    # prox_30d_high from the features), so unlike the old constant macro
+    # they DO carry cross-sectional selection information.
+    participation = score_participation(
+        coin_result.get("vol_ratio"), coin_result.get("vol_trend"))
+    flow_rotation = score_flow_rotation(
+        coin_result.get("vol_ratio"), coin_result.get("vol_trend"),
+        feats.get("prox_30d_high") if feats else None)
+
     if any(v is not None for v in feats.values()):
-        score, drivers, coverage = score_components(feats, rsi, macro_component)
+        score, drivers, coverage = score_components(
+            feats, rsi, participation=participation, flow_rotation=flow_rotation)
         if score is not None:
             detail = {"status": "ok", "version": "v2-features",
-                     "drivers": drivers, "coverage": coverage}
+                     "drivers": drivers, "coverage": coverage,
+                     "participation": participation, "flow_rotation": flow_rotation}
             # Comparability flag: a non-Binance source means volume-derived
             # inputs (VolPct90, ATRexp feed the breakout component) were
             # degraded or absent for THIS coin on THIS cycle, so its score
@@ -172,10 +193,13 @@ def compute_coin_trend_score(coin_result, glf_score, repo_stress_score):
     # Legacy v1 blend — kept for degraded rows (fallback source without
     # OHLC history) so a data-source failure degrades the score instead
     # of erasing it. Tagged so the UI/history can tell versions apart.
+    # Weight alignment (audit 2026-08): macro cut from 0.25 -> 0.10 to match
+    # the v2 treatment (constant global, no cross-sectional info); the freed
+    # 0.15 goes to relative strength (the actual coin-specific signal).
     trend_score = (
         0.35 * rsi_component +
-        0.40 * relative_strength_component +
-        0.25 * macro_component
+        0.55 * relative_strength_component +
+        0.10 * macro_component
     )
     trend_score = max(0.0, min(100.0, trend_score))
 

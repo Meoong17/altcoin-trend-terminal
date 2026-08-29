@@ -442,7 +442,7 @@ tr.detail .inner{padding:14px 16px;border-bottom:1px solid var(--line2)}
     <p>Coins that pass both filters are worth deeper research. Scores below 40 (red) with Avoid grade are not actionable right now.</p>
 
     <h3>3. Understand the score's building blocks</h3>
-    <p>Click any coin row or hover the dotted labels. Each trend score has <b>drivers</b> — the small chips under the number show which components (breakout, relative strength vs BTC, trend consistency, volatility compression, macro) are pulling the score up or down. A coin at 65 driven by breakout+volume is different from a 65 driven by trend consistency alone. Use this to match the score story to your own thesis.</p>
+    <p>Click any coin row or hover the dotted labels. Each trend score has <b>drivers</b> — the small chips under the number show which components (flow rotation, participation/volume, relative strength vs BTC, compression, plus a small confirmation filter) are pulling the score up or down. The four <em>core</em> signals drive the score: <b>flow rotation</b> (is money moving in early, or is volume chasing an already-extended price?), <b>participation</b> (is volume building or drying up?), <b>relative strength vs BTC</b>, and <b>volatility compression</b>. Use this to match the score story to your own thesis.</p>
 
     <h3>4. Use entry timing to decide <em>when</em></h3>
     <p>Trend score tells you <b>what</b> is trending. Entry Timing tells you <b>if now is a reasonable window</b>. A high trend score with Avoid entry grade means the trend is real but the entry is poor — wait for a pullback or a better setup. An A+ entry on a moderate trend score can be a catching-early opportunity.</p>
@@ -807,8 +807,9 @@ function cardBody(sym,c){
   const drivers=(c.trend_score_detail?.drivers||[]).slice(0,3);
   const vaf=c.vaf;
   const cov=c.trend_score_detail?.coverage;
-  const cardTip='How this card works: the big number is Trend Score (0–100), a weighted blend of '+
-    'breakout 30%, strength vs BTC 30%, trend consistency 20%, volatility compression 10% and macro 10%. '+
+  const cardTip='How this card works: the big number is Trend Score (0–100), driven by four core signals — '+
+    'flow rotation (money-before-price early trigger) 28%, participation/volume 28%, strength vs BTC 24%, '+
+    'volatility compression 12% — with an 8% confirmation filter (breakout + trend consistency). '+
     'The letter badge is Entry Timing (A+/A/B/Avoid) — timing only, separate from the score. '+
     'Each row below shows the raw value and, on the right, what that value currently means. '+
     'Missing inputs are excluded and the remaining weights renormalized, never filled with zero — '+
@@ -821,7 +822,7 @@ function cardBody(sym,c){
       <div class="vfrow" data-tip="${c.volume_flow?.detail||'Volume-flow label: where money moves before price realizes it. Display-only — never changes any score.'}"><span class="vfdot ${vfClass(c.volume_flow?.label)}"></span><b class="${vfClass(c.volume_flow?.label)}">${c.volume_flow?.label||'NO SIGNAL'}</b><span class="vfmuted">${c.volume_flow?.qi?'trend QI':'pre-QI'}</span></div>
       <div class="scorerow">
         <b style="color:${ts!=null?scoreColor(ts):'var(--muted)'}">${ts!=null?ts.toFixed(1):'n/a'}</b>
-        <span class="sl">FAST<span class="speedtag" style="margin-left:3px">1-7D</span><br></span><span class="sl" data-tip="Weighted technical composite: breakout 30%, strength vs BTC 30%, trend consistency 20%, compression 10%, macro 10%. Chips below show each component's push above/below neutral.">trend<br>score</span>
+        <span class="sl" data-tip="Weighted technical composite — four core signals: flow rotation (money-before-price) 28%, participation/volume 28%, strength vs BTC 24%, compression 12%, plus an 8% confirmation filter (breakout + trend consistency). Chips below show each component's push above/below neutral.">trend<br>score</span>
         ${gradeBadge(c.entry_timing,`Entry Timing grade from OTF (Opportunity &amp; Timing): market structure, relative strength vs BTC, execution quality`+(c.entry_timing?.coverage!=null?` — coverage ${Math.round(c.entry_timing.coverage*100)}%`:'')+`. A+ ≥41 · A ≥35 · B ≥28 · else Avoid. Separate from VaF/trend score — timing only, never changes them.`)}
         ${sparkline(closes)}
       </div>
@@ -995,7 +996,7 @@ function render(d,force){
   else if(nComp!=null&&nComp<4)warn.push('GLF running on '+nComp+' of 8 components');
   if(rd.status&&rd.status!=='ok')warn.push('repo stress unavailable — neutral-filled');
   $('degraded').style.display=warn.length?'block':'none';
-  $('degraded').textContent=warn.length?'⚠ MACRO DEGRADED: '+warn.join(' · ')+'. trend_score macro layer is not fully live.':'';
+  $('degraded').textContent=warn.length?'⚠ MACRO DEGRADED: '+warn.join(' · ')+'. Macro is the market context layer (regime/risk gate) — coin scores already exclude the constant macro input.':'';
 
   // ── coins: group filter + text filter + sort ──
   const box=$('coins');

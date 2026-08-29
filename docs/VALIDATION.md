@@ -134,11 +134,71 @@ predictor.
 |--------|--------|----------|
 | Cross-sectional momentum (altcoins) | **REJECTED** | 9-yr × 14-coin era-split IC (table above) |
 | Probability re-encoding of momentum | **REJECTED** | logistic OOS-AUC 0.498/0.508 cross-sec |
-| trend_score technical composite | **REJECTED** | backtest_latest.json Spearman −0.072, low precision/recall |
+| trend_score technical composite (OLD weights) | **REJECTED** | backtest_latest.json Spearman −0.072, low precision/recall |
 | entry_grade | UNTESTED (insufficient rows) | 2,163 rows, one fold |
 | Fundamental / VaF (point-in-time) | **PENDING — accumulating** | 20 days stored; framework ready, needs ≥60 days |
 
-The terminal's honest position: it is strong as a **research / macro /
-fundamental intelligence dashboard** (documented heuristics,
+## trend_score redesign (core-signal) — CHANGE, NOT YET VALIDATED
+
+On 2026-08 the trend_score composite was restructured per the audit +
+user directive, and this **changes the score's meaning** — the old
+backtest rejection above applies to the OLD weights, not automatically
+to the new ones:
+
+- **Before:** breakout 30% / rel-strength 30% / trend-consistency 20% /
+  compression 10% / **macro 10%**. The macro 10% carried the GLOBAL
+  GLF/repo value — identical across every coin in a snapshot, so it added
+  zero cross-sectional ranking info (`analysis/macro_constant_test.py`
+  confirmed: 75% of snapshot-days perfectly constant → rank impact 0).
+- **After (core-signal):** flow_rotation 28% / participation 28% /
+  rel-strength 24% / compression 12% / **confirmation 8%** (breakout +
+  trend-consistency folded into one small filter). The constant macro is
+  removed from the coin score; macro lives only in the regime/context
+  layer (`regime.py`). Two new coin-specific drivers were added per user
+  request: **participation** (volume building/participation) and
+  **flow_rotation** (inflow/outflow money-before-price early trigger,
+  proxied from volume vs price position — net-buy/exchange-flow legs are
+  not free-tier and are honestly NOT faked).
+- On current `data.json` the new formula re-ranks vs the old
+  (Spearman≈0.62) and lowers the mean (≈48→≈37, because the constant
+  inflation is gone and extended coins are now penalized).
+
+**Status: NOT YET VALIDATED.** This is a weighting/component change, and
+per repo rule it must be re-run through the walk-forward IC test on
+*accumulated* point-in-time history before any predictive claim. The
+volume-flow edge behind participation/flow_rotation was already tested
+(`analysis/volume_flow_cascade_test.py`) and found **weak/conditional**
+(early-accumulation gap ≈ +0.06 hit-rate inside a favorable gate, IC ≈ 0)
+— i.e. honest expectation is these help as a *risk filter* (avoid
+chasing extended) more than as a standalone picker. Re-run backtest and
+re-settle once new point-in-time rows accumulate under the new formula.
+
+The terminal's honest position remains: it is strong as a **research /
+macro / fundamental intelligence dashboard** (documented heuristics,
 display-only news & correlation, coverage guardrails). It is **not** a
 validated predictor. Do not market it as one.
+
+## Universe cleanup — tokenized bStocks removed (2026-08)
+
+Binance's tokenized US-equities product ("bStocks", launched June 2026)
+trades on the SAME spot API as crypto, so volume-ranked discovery
+(EXTEND_TOP) silently pulled tokenized equities (Apple AAPLB, Amazon
+AMZNB, AMD AMDB, SPY SPYB, SOXS SOXSB, SK Hynix SKHYB, etc.) into the
+altcoin universe. These move on equity-market dynamics (earnings, Fed,
+US hours), not crypto market structure — scoring them with a crypto
+trend model compares a different asset class.
+
+- `_BSTOCKS_BASES` in `altcoin/analyzer.py` expanded from 13 → ~63
+  confirmed tokenized-equity tickers (grouped by Binance launch batch,
+  June → Aug 2026), so `filter_alt_usdt_pairs` excludes them going forward.
+- 24 bStocks purged from the live `data.json` (405 → 381 coins). Genuine
+  crypto whose ticker happens to end in "B" were verified and KEPT
+  (ARB/Arbitrum, BNB, SHIB, TRB/Tellor, BB, VIB, AMB/AirDAO,
+  MOB/MobileCoin, YB). The defensive `_looks_like_unlisted_bstock()`
+  heuristic remains warning-only (never auto-excludes) so a real new
+  altcoin ending in "B" is not falsely dropped.
+- **Note:** `history.db` still holds pre-cleanup bStock rows. Backtest
+  numbers therefore still include tokenized-equity history (conservative,
+  not a leak); a full purge is optional and deferred.
+
+

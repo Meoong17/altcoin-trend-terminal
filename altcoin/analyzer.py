@@ -132,8 +132,28 @@ _LEVERAGED_SUFFIXES = ("UPUSDT", "DOWNUSDT", "BULLUSDT", "BEARUSDT")
 # periodic updates -- see _looks_like_unlisted_bstock() below for a
 # warning-only defense against ones not added here yet.
 _BSTOCKS_BASES = {
-    "NVDAB", "TSLAB", "CRCLB", "SNDKB", "SPCXB", "MUB",           # initial launch batch
-    "GOOGLB", "IBMB", "INTCB", "QQQB", "MSTRB", "SOXLB", "EWYB",  # observed in later expansion
+    # initial launch batch (June 2026)
+    "NVDAB", "TSLAB", "CRCLB", "SNDKB", "SPCXB", "MUB",
+    # observed in later expansion (July 2026)
+    "GOOGLB", "IBMB", "INTCB", "QQQB", "MSTRB", "SOXLB", "EWYB",
+    # July 7 margin-collateral batch
+    "QCOMB", "COINB", "SPYB", "WDCB", "GLWB", "NBISB", "DRAMB", "CBRSB",
+    # July 15 batch (Marvell, Nokia, Rocket Lab, TSMC)
+    "MRVLB", "NOKB", "RKLBB", "TSMB",
+    # July 22 batch
+    "AXTIB", "CRWVB", "INTWB", "KORUB", "MUUB", "MVLLB", "ORCLB", "QNTB",
+    "SNXXB", "TQQQB",
+    # July 29 batch (Apple, Bloom, Amazon, SOXS ETF, Dell, Fluence,
+    #   Applied Materials, PayPal, Goldman Sachs)
+    "AAPLB", "BEB", "AMZNB", "SOXSB", "DELLB", "FLNCB", "AMATB", "PYPLB", "GSB",
+    # Aug 12 batch (Alibaba, ASML, Astera, BMNR, Coherent, Credo,
+    #   Iris Energy, NetFlix, Supermicro, USAR)
+    "ALABB", "ASMLB", "ASTSB", "BMNRB", "COHRB", "CRDOB", "IRENB", "NFLXB",
+    "SMCIB", "USARB",
+    # SK Hynix (SKHY), Applied Optoelectronics (AAOI), Lumentum (LITE),
+    # Meta (METAB), DJT / Trump Media (DJTB), AMD (AMDB) — confirmed
+    # tokenized equities observed in the live universe
+    "SKHYB", "AAOIB", "LITEB", "METAB", "DJTB", "AMDB",
 }
 
 
@@ -671,13 +691,30 @@ if __name__ == "__main__":
     assert f["prox_30d_high"] == 1.0, "monotonic uptrend closes at its 30d high"
     assert f["green_ratio_30d"] == 1.0 and f["ema_slope"] > 0
     assert f["vol_pct_90d"] == 100.0, "volume spike day ranks p100"
-    score, drivers, _cov1 = score_components(f, rsi=62, macro_component=60)
-    print(f"feature score={score}, top driver={drivers[0]['component']} ({drivers[0]['contribution']:+})")
-    assert score is not None and score > 70, "textbook breakout setup must score high"
-    assert drivers and abs(sum(d['contribution'] for d in drivers) - (score-50)) < 0.5, \
+    # Core-signal design (2026-08): trend score is driven by flow rotation +
+    # participation + rel_strength + compression; breakout/trend are only the
+    # small "confirmation" filter. A coin at its 30d high with a volume spike
+    # is EXTENDED (flow_rotation reads OUTFLOW/distribution, low score), so it
+    # no longer blindly clears the old >70 "breakout must score high" bar —
+    # that assertion was calibrated to the old breakout-heavy weights. Instead
+    # we assert the core decomposition + explainability contract hold, and that
+    # an EARLY-ACCUMULATION case (volume up, price still low -> flow INFLOW)
+    # scores HIGHER than the extended one.
+    ext_score, ext_drivers, _cov_ext = score_components(
+        f, rsi=62, participation=85.0, flow_rotation=30.0)  # extended / outflow
+    early_score, early_drivers, _cov_early = score_components(
+        f, rsi=62, participation=85.0, flow_rotation=85.0)  # early inflow
+    print(f"feature score (extended, flow=30)={ext_score}, "
+          f"top driver={ext_drivers[0]['component']} ({ext_drivers[0]['contribution']:+})")
+    print(f"feature score (early inflow, flow=85)={early_score}")
+    assert ext_score is not None and early_score is not None, "both cases must yield a score"
+    assert early_score > ext_score, \
+        "early-accumulation (inflow) must outscore the extended/outflow setup"
+    assert all(abs(sum(d['contribution'] for d in ds) - (sc-50)) < 0.5
+               for ds, sc in ((ext_drivers, ext_score), (early_drivers, early_score))), \
         "driver contributions must decompose the score (explainability contract)"
     # graceful degradation: no features at all -> None (caller falls to v1)
-    s_none, d_none, _cov2 = score_components({}, rsi=None, macro_component=None)
+    s_none, d_none, _cov2 = score_components({}, rsi=None)
     assert s_none is None and d_none == []
     print("✅ PASS: feature engineering + composite score v2 with additive drivers\n")
 
@@ -920,13 +957,14 @@ if __name__ == "__main__":
     full_f = {"prox_30d_high": 0.8, "vol_pct_90d": 70, "atr_expansion": 1.1,
               "ir_7d": 1.2, "green_ratio_30d": 0.7, "ema_slope": 0.02, "ema_streak": 5,
               "compression_setup": False, "bbw_pct_90d": 40}
-    s_full, d_full, cov_full = _sc(full_f, rsi=60, macro_component=60)
+    s_full, d_full, cov_full = _sc(full_f, rsi=60,
+                                   participation=70.0, flow_rotation=55.0)
     partial_f = {"prox_30d_high": 0.8, "vol_pct_90d": 70, "atr_expansion": 1.1}
-    s_part, d_part, cov_part = _sc(partial_f, rsi=60, macro_component=60)
+    s_part, d_part, cov_part = _sc(partial_f, rsi=60)
     print(f"coverage full={cov_full}, partial={cov_part}")
     assert cov_full["used"] == 5 and not cov_full["missing"]
-    assert cov_part["used"] < cov_full["used"] and "trend_consistency" in cov_part["missing"]
-    assert _sc({}, None, None)[2] == {"used": 0, "total": 5, "weight_covered": 0.0}
+    assert cov_part["used"] < cov_full["used"] and "rel_strength" in cov_part["missing"]
+    assert _sc({}, None)[2] == {"used": 0, "total": 5, "weight_covered": 0.0}
     print("\u2705 PASS: score_components coverage \u2014 tells apart 5/5 vs partial component sets\n")
 
     # Correlation / concentration warning (review fix #3: portfolio correlation)
@@ -1251,13 +1289,14 @@ if __name__ == "__main__":
 
     # Defensive heuristic: warns on an unlisted-but-pattern-matching symbol,
     # NEVER silently excludes it (a genuine new altcoin could end in "B")
-    assert _looks_like_unlisted_bstock("AAPLB") is True, "unrecognized bStock-shaped ticker should be flagged"
+    assert _looks_like_unlisted_bstock("ZZZZB") is True, "unrecognized bStock-shaped ticker should be flagged"
     assert _looks_like_unlisted_bstock("NVDAB") is False, "already-known bStock must not re-warn"
+    assert _looks_like_unlisted_bstock("AAPLB") is False, "known bStock (added 2026-08) must not re-warn"
     assert _looks_like_unlisted_bstock("SOLB") is True or _looks_like_unlisted_bstock("SOLB") is False
     # a real coin that happens to end in B must still be KEPT (warning-only, not excluded)
-    fake_new = [{"symbol": "AAPLBUSDT", "quoteVolume": "400000000"}]
+    fake_new = [{"symbol": "SOMEBUSDT", "quoteVolume": "400000000"}]
     result2 = filter_alt_usdt_pairs(fake_new)
-    assert result2 == ["AAPLBUSDT"], "unrecognized pattern must warn, not silently drop -- avoids a false-positive exclusion"
+    assert result2 == ["SOMEBUSDT"], "unrecognized pattern must warn, not silently drop -- avoids a false-positive exclusion"
     print("\u2705 PASS: bStocks (tokenized equity) exclusion \u2014 known list filtered, genuine alts kept, unknown patterns warn instead of silently dropping\n")
 
     # General non-ASCII/anomalous ticker guard (fix for the "\u5e01\u5b89\u4eba\u751f" /
