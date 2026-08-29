@@ -1,13 +1,13 @@
 {
-  "run_id": "bt_1788010920",
-  "started_at": "2026-08-29T13:42:00.881376+00:00",
+  "run_id": "bt_1788011324",
+  "started_at": "2026-08-29T13:48:44.824258+00:00",
   "config": {
     "horizon_days": 7,
     "min_days_for_validity": 60
   },
   "sufficient_sample": false,
-  "sample_days": 1,
-  "sample_note": "only 1/60 days on record; day-count alone is not enough.",
+  "sample_days": 0,
+  "sample_note": "only 0/60 days on record; day-count alone is not enough.",
   "gates": {
     "days_ok": false,
     "regimes_ok": false,
@@ -15,7 +15,7 @@
   },
   "walk_forward_folds": [],
   "overall_dry_run_preview": {
-    "n_rows": 31,
+    "n_rows": 0,
     "n_with_forward_return": 0,
     "horizon_days": 7,
     "entry_grade_vs_forward_return": null,
