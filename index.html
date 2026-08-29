@@ -329,6 +329,17 @@ tr.detail .inner{padding:14px 16px;border-bottom:1px solid var(--line2)}
 .gradebadge.gB{background:rgba(232,180,79,.12);color:var(--warn);border:1px solid rgba(232,180,79,.35)}
 .gradebadge.gAvoid{background:rgba(242,107,92,.12);color:var(--down);border:1px solid rgba(242,107,92,.35)}
 .gradebadge.gNA{background:var(--panel2);color:var(--dim);border:1px solid var(--line)}
+.trendword{font-size:13px;font-weight:800;letter-spacing:.3px;line-height:1.1}
+.condword{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.condword.wn{color:var(--warn);border-color:rgba(242,107,92,.4);background:rgba(242,107,92,.08)}
+.condword.pos{color:var(--up);border-color:rgba(52,217,139,.35);background:rgba(52,217,139,.08)}
+.condword.neu{color:var(--dim);border-color:var(--line)}
+details.techx{margin-top:3px;border-top:1px dashed var(--line);padding-top:5px}
+details.techx summary{cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.4px;color:var(--liq);list-style:none;user-select:none;text-transform:uppercase}
+details.techx summary::-webkit-details-marker{display:none}
+details.techx summary::before{content:'▸ ';color:var(--dim)}
+details.techx[open] summary::before{content:'▾ ';color:var(--liq)}
+.techx-inner{padding-top:7px}
 </style>
 </head>
 <body>
@@ -654,38 +665,75 @@ function verdictCaption(verdict){
     :'Mixed signal — some strengths, some gaps';
   return `<div class="metric-cap">${read}.</div>`;
 }
+function macdPlain(state){
+  const s=String(state||'');
+  if(/bullish cross|histogram turned \+/.test(s))return 'momentum just turned up';
+  if(/bearish cross|histogram turned −/.test(s))return 'momentum just turned down';
+  if(/bullish|above/.test(s))return 'momentum improving';
+  if(/bearish|below/.test(s))return 'momentum cooling down';
+  return 'mixed';
+}
+function rsiPlain(z){
+  if(z==='overbought')return 'price ran up fast — stretched';
+  if(z==='oversold')return 'price dropped a lot — stretched';
+  if(z==='momentum')return 'healthy upward push';
+  return 'balanced';
+}
+function bbPlain(state,pctB){
+  const s=String(state||''), p=pctB;
+  if(/above upper/.test(s))return 'price stretched above its usual range';
+  if(/below lower/.test(s))return 'price stretched below its usual range';
+  if(/upper band/.test(s)||p>0.8)return 'near the top of its usual range';
+  if(/lower band/.test(s)||p<0.2)return 'near the bottom of its usual range';
+  return 'middle of its usual range';
+}
+function atrPlain(pct){
+  if(pct==null)return '—';
+  const base=`swings ~${pct}% a day`;
+  if(pct>8)return `${base} — very volatile`;
+  if(pct>4)return `${base} — volatile`;
+  return `${base} — relatively calm`;
+}
+function maPlain(ta){
+  const vs=[ta['price_vs_ma20'],ta['price_vs_ma50'],ta['price_vs_ma100']].filter(v=>v!=null);
+  if(!vs.length)return null;
+  if(vs.every(v=>v>0))return 'price above its recent 20/50/100-day averages';
+  if(vs.every(v=>v<0))return 'price below its recent 20/50/100-day averages';
+  return 'price mixed vs its recent averages';
+}
+function techTakeaway(trendWord,condWord){
+  const t=trendWord==='Uptrend'?'price generally rising':trendWord==='Downtrend'?'price generally falling':'price moving sideways';
+  const c=condWord==='Overbought'?'ran up fast, stretched':condWord==='Oversold'?'dropped a lot, stretched':condWord==='Momentum'?'healthy upward push':'balanced';
+  return `Technical state: ${t} · ${c} — descriptive, not a prediction.`;
+}
 function taPanel(ta){
   if(!ta||!ta.price)return'';
-  const up=ta.trend_state&&/uptrend/.test(ta.trend_state), dn=ta.trend_state&&/downtrend/.test(ta.trend_state);
-  const maChips=[20,50,100].map(p=>{
-    const v=ta['ma'+p], pv=ta['price_vs_ma'+p];
-    if(v==null)return'';
-    return `<span class="chip ${pv==null?'':pv>0?'p':'n'}">MA${p} <b>${pv!=null?(pv>0?'+':'')+pv+'%':'—'}</b></span>`;
-  }).filter(Boolean).join('');
-  const macd=ta.macd?.state, mCls=/bullish|above/.test(macd||'')?'pos':/bearish|below/.test(macd||'')?'neg':'neu';
-  const rCls=ta.rsi_zone==='momentum'?'pos':(ta.rsi_zone==='overbought'||ta.rsi_zone==='oversold')?'neg':'neu';
-  const bCls=/above|upper/.test(ta.bollinger?.state||'')?'neg':/below|lower/.test(ta.bollinger?.state||'')?'pos':'neu';
-  const maAlignCls=/bullish/.test(ta.ma_alignment||'')?'p':/bearish/.test(ta.ma_alignment||'')?'n':'';
+  const up=/uptrend/.test(ta.trend_state||''), dn=/downtrend/.test(ta.trend_state||'');
   const r=ta.range_pos_pct;
+  const row=(k,v,c)=>`<div style="margin:2px 0"><div style="color:var(--dim);font-size:9.5px;letter-spacing:.2px">${k}</div><div class="${c||'neu'}" style="font-size:11px">${v}</div></div>`;
+  const mP=ta.macd?macdPlain(ta.macd.state):null, mC=/improving|turned up/.test(mP||'')?'pos':/cooling|turned down/.test(mP||'')?'neg':'neu';
+  const rP=ta.rsi_zone?rsiPlain(ta.rsi_zone):null, rC=ta.rsi_zone==='momentum'?'pos':(ta.rsi_zone==='overbought'||ta.rsi_zone==='oversold')?'wn':'neu';
+  const bP=ta.bollinger?bbPlain(ta.bollinger.state,ta.bollinger.pctB):null, bC=/top|above/.test(bP||'')?'wn':/bottom|below/.test(bP||'')?'wn':'neu';
+  const aP=ta.atr?atrPlain(ta.atr.pct):null;
+  const mAP=maPlain(ta);
   return `<div style="margin:10px 0 4px;border:1px dashed var(--line);border-radius:8px;padding:8px 10px;background:var(--panel2)">
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px">
       <span style="font-size:10px;font-weight:700;letter-spacing:.4px">TECHNICAL ANALYSIS</span>
       <span class="chip" style="color:var(--warn);border-color:var(--warn)">DISPLAY ONLY</span>
     </div>
-    <div class="metric-cap" data-tip="Descriptive technical readout from the last ~100 daily candles. Technicals were rejected as a predictive signal in the cross-era validation, so this is research context, not a signal.">Additional analysis — not a validated predictor (technicals failed the cross-era IC test).</div>
-    <div style="font-size:10.5px;margin:5px 0">${ta.trend_state?`<span class="${up?'pos':dn?'neg':'neu'}" style="font-weight:600">${ta.trend_state}</span>`:''}${ta.trend_state?' · ':''}<span class="neu">price in 90d range <b>${r!=null?r+'%':'—'}</b></span></div>
-    ${maChips?`<div class="chips" style="margin:0 0 6px">${maChips}${ta.ma_cross?`<span class="chip ${/bullish|golden/.test(ta.ma_cross)?'p':/bearish|death/.test(ta.ma_cross)?'n':''}"><b>${ta.ma_cross}</b></span>`:''}${ta.ma_alignment?`<span class="chip ${maAlignCls}"><b>${ta.ma_alignment}</b></span>`:''}</div>`:''}
-    <div class="rows" style="font-size:10.5px">
-      ${ta.macd?rowTA('MACD',`<span class="${mCls}">${ta.macd.state}</span>`):''}
-      ${ta.rsi_zone?rowTA('RSI zone',`<span class="${rCls}">${ta.rsi_zone}</span>`):''}
-      ${ta.bollinger?rowTA('Bollinger',`<span class="${bCls}">%B ${ta.bollinger.pctB} · ${ta.bollinger.state}</span>`):''}
-      ${ta.atr?rowTA('ATR / volatility',`<span class="neu">${fmtPx(ta.atr.value)} · ${ta.atr.pct}%</span>`):''}
-      ${ta.support?rowTA('Support',`<span class="neu">30d ${fmtPx(ta.support['30d'])} · 90d ${fmtPx(ta.support['90d'])}</span>`):''}
-      ${ta.resistance?rowTA('Resistance',`<span class="neu">30d ${fmtPx(ta.resistance['30d'])} · 90d ${fmtPx(ta.resistance['90d'])}</span>`):''}
+    <div class="metric-cap" data-tip="Descriptive technical readout from the last ~100 daily candles. Technicals were rejected as a predictive signal in the cross-era validation, so this is research context, not a signal.">Explained in plain words — descriptive, not a validated predictor.</div>
+    <div style="font-size:11px;margin:6px 0;font-weight:600"><span class="${up?'pos':dn?'neg':'neu'}">${up?'Uptrend':dn?'Downtrend':'Sideways'}</span> <span class="neu" style="font-weight:400">· price in its 90-day range: <b>${r!=null?r+'%':'—'}</b></span></div>
+    <div style="margin-top:4px">
+      ${mAP?row('Recent averages',mAP):''}
+      ${ta.macd?row('Momentum',mP,mC):''}
+      ${ta.rsi_zone?row('Stretch',rP,rC):''}
+      ${ta.bollinger?row('Usual range',bP,bC):''}
+      ${ta.atr?row('Daily swings',aP):''}
+      ${ta.support?row('Support — where buyers stepped in',`30d ${fmtPx(ta.support['30d'])} · 90d ${fmtPx(ta.support['90d'])}`):''}
+      ${ta.resistance?row('Resistance — where sellers appeared',`30d ${fmtPx(ta.resistance['30d'])} · 90d ${fmtPx(ta.resistance['90d'])}`):''}
     </div>
   </div>`;
 }
-function rowTA(k,v){return `<div style="display:flex;justify-content:space-between;gap:10px;padding:1px 0"><span style="color:var(--dim)">${k}</span><span>${v}</span></div>`;}
 /* ── Condition labels ──
    Turn a raw number into what it actually means, so the card explains
    itself without the reader needing to know the thresholds. Each
@@ -840,15 +888,25 @@ function cardBody(sym,c){
   const drivers=(c.trend_score_detail?.drivers||[]).slice(0,3);
   const vaf=c.vaf;
   const cov=c.trend_score_detail?.coverage;
-  const cardTip='How this card works: the number is a TECHNICAL SETUP readout (0–100) — DISPLAY ONLY. '+
-    'It is NOT a validated predictor: momentum &amp; technicals failed the cross-era IC test (coin-flip). '+
-    'It is built from four technical signals — flow rotation 28% (WHO is pressing the market — taker-buy share, '+
-    'distinct from volume), participation/volume 28% (how much activity), strength vs BTC 24%, '+
-    'volatility compression 12% — with an 8% confirmation filter (breakout + trend consistency). '+
-    'The letter badge is Entry Timing (A+/A/B/Avoid) — timing only, separate from the number. '+
+  // Plain-language technical summary for laypeople (default view). The
+  // numeric readout + driver chips + full TA panel move into an
+  // "Technical details (advanced)" expander below.
+  const _ta=c.ta||{};
+  const up=/uptrend/.test(_ta.trend_state||''), dn=/downtrend/.test(_ta.trend_state||'');
+  const trendWord=up?'Uptrend':dn?'Downtrend':'Range';
+  const trendCls=up?'pos':dn?'neg':'neu';
+  let condWord='Neutral', condCls='neu';
+  const rz=_ta.rsi_zone;
+  if(rz==='overbought'){condWord='Overbought';condCls='wn';}
+  else if(rz==='oversold'){condWord='Oversold';condCls='wn';}
+  else if(rz==='momentum'){condWord='Momentum';condCls='pos';}
+  const cardTip='How this card works: the top shows a plain-language technical summary — a trend word '+
+    '(Uptrend / Downtrend / Range) and a momentum condition (Overbought / Oversold / Neutral). '+
+    'These are DESCRIPTIVE, not predictions — momentum &amp; technicals failed the cross-era IC test (coin-flip). '+
+    'The letter badge is Entry Timing (A+/A/B/Avoid) — timing only, never a validated prediction. '+
+    'Open "Technical details (advanced)" for the numeric readout, driver breakdown and full TA panel. '+
     'For protocol tokens the VaF/F-Score chips are the measured-value view (still pending the ≥60-day test). '+
-    'Missing inputs are excluded and the remaining weights renormalized, never filled with zero — '+
-    'the Coverage row tells you how many of the 5 components were actually available.';
+    'Missing inputs are excluded and the remaining weights renormalized, never filled with zero.';
   return `      <div class="head">
         <span class="sym">${sym.replace('USDT','')}<small>/USDT${c.groups?' · '+c.groups.map(g=>g.toUpperCase()).join(','):''}</small>${srcBadge}${infoIcon(cardTip)}</span>
         <span class="px"><b>${fmtPx(c.latest_price)}</b>
@@ -856,17 +914,24 @@ function cardBody(sym,c){
       </div>
       <div class="vfrow" data-tip="${c.volume_flow?.detail||'Volume-flow label: where money moves before price realizes it. Display-only — never changes any score.'}"><span class="vfdot ${vfClass(c.volume_flow?.label)}"></span><b class="${vfClass(c.volume_flow?.label)}">${c.volume_flow?.label||'NO SIGNAL'}</b><span class="vfmuted">${c.volume_flow?.qi?'trend QI':'pre-QI'}</span></div>
       <div class="scorerow">
-        <b style="color:${ts!=null?scoreColor(ts):'var(--muted)'}">${ts!=null?ts.toFixed(1):'n/a'}</b>
-        <span class="sl" data-tip="Technical setup (0–100) — DISPLAY ONLY, NOT a validated predictor (momentum &amp; technicals failed the cross-era IC test). Four signals: flow rotation 28% (taker-buy share), participation 28% (activity), strength vs BTC 24%, compression 12%, + 8% confirmation filter. Chips below show each component's push above/below neutral.">tech<br>setup</span>
-        ${gradeBadge(c.entry_timing,`Entry Timing grade from OTF (Opportunity &amp; Timing): market structure, relative strength vs BTC, execution quality`+(c.entry_timing?.coverage!=null?` — coverage ${Math.round(c.entry_timing.coverage*100)}%`:'')+`. A+ ≥41 · A ≥35 · B ≥28 · else Avoid. Separate from VaF/trend score — timing only, never changes them.`)}
+        <span class="trendword ${trendCls}" data-tip="Plain-language trend state for this coin (from recent highs/lows): Uptrend = higher highs &amp; higher lows, Downtrend = lower highs &amp; lower lows, Range = no clear direction. Descriptive — not a prediction.">${trendWord}</span>
+        <span class="condword ${condCls}" data-tip="Where the coin sits on the RSI momentum gauge: Overbought = stretched high, Oversold = stretched low, Neutral/Momentum = middle. Descriptive — not a signal.">${condWord}</span>
+        ${gradeBadge(c.entry_timing,`Entry Timing grade from OTF (Opportunity &amp; Timing): market structure, relative strength vs BTC, execution quality`+(c.entry_timing?.coverage!=null?` — coverage ${Math.round(c.entry_timing.coverage*100)}%`:'')+`. A+ ≥41 · A ≥35 · B ≥28 · else Avoid. Timing only, never a validated prediction.`)}
         ${sparkline(closes)}
       </div>
-      <div class="sbar"><i style="width:${ts||0}%;background:${ts!=null?scoreColor(ts):'transparent'}"></i></div>
-      ${scoreCaption(ts)}${gradeCaption(c.entry_timing?.grade)}
-      ${drivers.length?`<div class="chips" style="margin:-2px 0 8px">`+drivers.map(dr=>`<span class="chip ${dr.contribution>=0?'p':'n'}">${dr.component.replace('_',' ')} <b>${dr.contribution>0?'+':''}${dr.contribution}</b></span>`).join('')+
-        (c.trend_score_detail?.coverage?`<span class="chip" data-tip="How many of the 5 possible technical components fed this score. Two coins with the same numeric score aren't directly comparable if their coverage differs.">COVERAGE <b>${c.trend_score_detail.coverage.used}/${c.trend_score_detail.coverage.total}</b></span>`:'')+
-        `</div>`:''}
-      ${c.trend_score_detail?.comparability_note?`<div style="font-size:9.5px;color:var(--warn);margin:-4px 0 8px">⚠ ${c.trend_score_detail.comparability_note}</div>`:''}
+      <div class="metric-cap">${techTakeaway(trendWord,condWord)}</div>
+      ${gradeCaption(c.entry_timing?.grade)}
+      <details class="techx">
+        <summary>Technical details <span style="color:var(--dim);font-weight:500">(advanced)</span></summary>
+        <div class="techx-inner">
+          ${scoreCaption(ts)}
+          ${drivers.length?`<div class="chips" style="margin:0 0 8px">`+drivers.map(dr=>`<span class="chip ${dr.contribution>=0?'p':'n'}">${dr.component.replace('_',' ')} <b>${dr.contribution>0?'+':''}${dr.contribution}</b></span>`).join('')+
+            (c.trend_score_detail?.coverage?`<span class="chip" data-tip="How many of the 5 possible technical components fed this readout. Two coins with the same number aren't directly comparable if coverage differs.">COVERAGE <b>${c.trend_score_detail.coverage.used}/${c.trend_score_detail.coverage.total}</b></span>`:'')+
+            `</div>`:''}
+          ${c.trend_score_detail?.comparability_note?`<div style="font-size:9.5px;color:var(--warn);margin:0 0 8px">⚠ ${c.trend_score_detail.comparability_note}</div>`:''}
+          ${taPanel(c.ta)}
+        </div>
+      </details>
       ${vaf?`<div class="chips vafchips" style="margin:0 0 7px">
         <span class="chip" data-tip="Direct Value Accrual Framework: PQ (protocol quality) + NF (structural token value capture) + RG (repricing gap), each /50. 105+ strong, 120+ elite. Open HOW TO READ for the full method.">VaF <b>${vaf.vaf??'—'}/150</b></span>
         <span class="chip">PQ <b>${vaf.pq??'—'}</b></span><span class="chip">NF <b>${vaf.nf??'—'}</b></span><span class="chip">RG <b>${vaf.rg??'—'}</b></span>
@@ -1070,14 +1135,13 @@ function render(d,force){
 
   // ── quick stats over the filtered set ──
   const okRows=entries.filter(([,c])=>c.status==='ok').map(([,c])=>c);
-  const scores=okRows.map(c=>c.trend_score).filter(v=>v!=null).sort((a,b)=>a-b);
-  const med=scores.length?scores[Math.floor(scores.length/2)].toFixed(0):'—';
-  const above=okRows.filter(c=>c.trend_score>=60).length;
+  const upCnt=okRows.filter(c=>/uptrend/.test(c.ta?.trend_state||'')).length;
+  const obCnt=okRows.filter(c=>c.ta?.rsi_zone==='overbought').length;
   const spikes=okRows.filter(c=>c.vol_ratio!=null&&c.vol_ratio>=2).length;
   const catal=okRows.filter(c=>c.news&&((c.news.catalysts_pos||[]).length||(c.news.catalysts_neg||[]).length)).length;
   $('stats').innerHTML=`
-    <div class="stat"><span class="sk2">median tech readout</span><span class="sv" style="color:${med!=='—'?scoreColor(+med):'var(--muted)'}">${med}</span></div>
-    <div class="stat"><span class="sk2">tech setups 60+ (display only)</span><span class="sv">${above}<small style="color:var(--dim);font-size:11px">/${okRows.length}</small></span></div>
+    <div class="stat"><span class="sk2">coins in uptrend</span><span class="sv" style="color:${upCnt?'var(--up)':'var(--text)'}">${upCnt}<small style="color:var(--dim);font-size:11px">/${okRows.length}</small></span></div>
+    <div class="stat"><span class="sk2">coins stretched (overbought)</span><span class="sv" style="color:${obCnt?'var(--warn)':'var(--text)'}">${obCnt}</span></div>
     <div class="stat"><span class="sk2">volume spikes ≥2×</span><span class="sv" style="color:${spikes?'var(--liq)':'var(--text)'}">${spikes}</span></div>
     <div class="stat"><span class="sk2">coins with catalysts</span><span class="sv" style="color:${catal?'var(--warn)':'var(--text)'}">${catal}</span></div>`;
 
