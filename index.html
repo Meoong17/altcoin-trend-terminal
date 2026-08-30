@@ -30,14 +30,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13
     radial-gradient(1200px 500px at 50% -220px,rgba(83,200,236,.07),transparent 65%),
     radial-gradient(900px 420px at 85% -120px,rgba(233,196,106,.05),transparent 60%),
     radial-gradient(700px 380px at 8% 10%,rgba(157,123,234,.04),transparent 60%)}
-.wrap{max-width:1160px;margin:0 auto;padding:0 18px 56px}
+.wrap{max-width:1380px;margin:0 auto;padding:0 18px 56px}
 ::selection{background:rgba(83,200,236,.25)}
 
 /* ── sticky glass header ── */
 header{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   background:rgba(10,13,19,.78);border-bottom:1px solid transparent;
   box-shadow:inset 0 -1px 0 rgba(233,196,106,.10),0 1px 0 rgba(0,0,0,.35)}
-.hd{max-width:1160px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:14px}
+.hd{max-width:1380px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:14px}
 .brand{display:flex;align-items:center;gap:11px;white-space:nowrap}
 .mark{width:30px;height:30px;flex:none;border-radius:8px;position:relative;
   background:linear-gradient(135deg,#1A2230,#0D1119);border:1px solid rgba(233,196,106,.25);
@@ -101,27 +101,37 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 #filter{width:150px}
 #filter:focus,#sort:focus,#grp:focus{border-color:var(--liq)}
 
-/* ── sector taxonomy bar (CoinGecko/CoinMarketCap-style color pills) ── */
-#sectorbar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;
-  margin:-2px 0 16px;padding:11px 13px;
+/* ── two-column layout: left sector sidebar + main ── */
+.layout{display:grid;grid-template-columns:235px 1fr;gap:20px;align-items:start}
+.main{min-width:0;display:grid;gap:0}
+#sidebar{position:sticky;top:74px;align-self:start;
   background:linear-gradient(180deg,var(--panel),var(--panel2));
-  border:1px solid rgba(233,196,106,.08);border-radius:var(--r);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.03),var(--shadow)}
-#sectorbar .sb-cap{font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
-  margin-right:3px;white-space:nowrap}
-.sec-pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);
-  font-size:10px;font-weight:600;letter-spacing:.03em;color:#fff;
-  padding:4px 10px;border-radius:999px;cursor:pointer;user-select:none;
-  border:1px solid transparent;white-space:nowrap;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 1px 3px rgba(0,0,0,.45);
-  transition:transform .14s ease,filter .14s ease}
-.sec-pill:hover{transform:translateY(-1px);filter:brightness(1.12)}
-.sec-pill b{font-weight:700;opacity:.85;font-size:9px}
-.sec-pill.on{outline:2px solid rgba(255,255,255,.9);outline-offset:1px}
-.sec-pill.on::after{content:"✕";margin-left:1px;font-size:9px;opacity:.92}
-.sec-pill.all{background:linear-gradient(180deg,#2E394B,#1B2230);color:var(--text)}
-.sec-pill.all.on{outline-color:var(--liq)}
-.sec-pill:focus-visible{outline:2px solid var(--liq);outline-offset:2px}
+  border:1px solid rgba(233,196,106,.08);border-radius:var(--r);padding:12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03),var(--shadow);
+  max-height:calc(100vh - 92px);overflow-y:auto}
+#sidebar .sb-cap{font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+  margin:0 4px 8px}
+.sec-item{display:flex;align-items:center;gap:9px;width:100%;padding:7px 9px;border-radius:8px;
+  cursor:pointer;color:var(--muted);font-size:11px;letter-spacing:.02em;text-align:left;
+  background:transparent;border:1px solid transparent;font-family:var(--mono);
+  transition:background .14s ease,color .14s ease,border-color .14s ease}
+.sec-item:hover{background:rgba(255,255,255,.045);color:var(--text)}
+.sec-item:focus-visible{outline:2px solid var(--liq);outline-offset:-1px}
+.sec-item.on{background:color-mix(in srgb,var(--sc) 15%,transparent);color:var(--sc);
+  border-color:color-mix(in srgb,var(--sc) 40%,transparent)}
+.sec-item.on .sec-name{font-weight:700}
+.sec-dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--sc);
+  box-shadow:0 0 6px var(--sc)}
+.sec-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sec-count{font-family:var(--mono);font-size:9.5px;opacity:.72}
+.sec-count{font-variant-numeric:tabular-nums}
+@media(max-width:960px){
+  .layout{grid-template-columns:1fr;gap:14px}
+  #sidebar{position:static;max-height:none;overflow:visible}
+  #sectorlist{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+  #sectorlist .sec-item{flex:none;white-space:nowrap}
+  #sidebar .sb-cap{display:none}
+}
 /* small sector badge reused on cards + table rows */
 .sec-badge{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.05em;color:#fff;
   padding:1.5px 6px;border-radius:999px;vertical-align:1px;white-space:nowrap;
@@ -394,6 +404,12 @@ details.techx[open] summary::before{content:'▾ ';color:var(--liq)}
 </header>
 
 <div class="wrap">
+  <div class="layout">
+    <aside id="sidebar" aria-label="Sector navigation">
+      <div class="sb-cap">Sectors</div>
+      <div id="sectorlist"></div>
+    </aside>
+    <div class="main">
   <div id="macro">
     <div class="mbox">
       <span class="lbl">SLOW SIGNAL<span class="speedtag">30-90D</span></span><br><span class="lbl" data-tip="Global Liquidity Factor 0–100: composite of central-bank balance sheets (Fed, ECB, BoJ, China M2), US M2, TGA, RRP and DXY, each as a z-score. Above 60 = liquidity tailwind for risk assets.">Global Liquidity Factor</span><i class="info-icon" data-tip="Global Liquidity Factor 0–100: composite of central-bank balance sheets (Fed, ECB, BoJ, China M2), US M2, TGA, RRP and DXY, each as a z-score. Above 60 = liquidity tailwind for risk assets." role="button" tabindex="0" aria-label="How this works">i</i>
@@ -458,12 +474,12 @@ details.techx[open] summary::before{content:'▾ ';color:var(--liq)}
     </select>
   </div>
 
-  <div id="sectorbar" aria-label="Filter by sector"></div>
-
   <div id="coins" aria-live="polite"></div>
   <div id="tablewrap"><table class="tt"><thead></thead><tbody></tbody></table></div>
   <button id="showmore" type="button">SHOW 100 MORE</button>
   <div id="empty" hidden>data.json not found — the collector hasn't produced data yet.</div>
+    </div>
+  </div>
 
   <footer>
     <span>sources: Binance klines · Bybit · FRED · DeFiLlama · open.er-api</span>
@@ -534,10 +550,12 @@ const shade=(h,pct)=>{const[r,g,b]=hexRgb(h);const f=x=>Math.max(0,Math.min(255,
   return`rgb(${f(r)},${f(g)},${f(b)})`;};
 function secPill(g,count,active){
   const c=secColor(g);
-  return `<span class="sec-pill${g===''?' all':''}${active?' on':''}" data-sec="${g}" role="button" tabindex="0"
-    style="background:linear-gradient(180deg,${c},${shade(c,-14)})"
+  return `<div class="sec-item${active?' on':''}" data-sec="${g}" role="button" tabindex="0"
+    style="--sc:${c}"
     data-tip="${g===''?'Show all sectors':'Filter to the '+g.toUpperCase()+' sector'}" aria-pressed="${active}">
-    ${g===''?'ALL':g.toUpperCase()}${count!=null?`<b>${count}</b>`:''}</span>`;
+    <i class="sec-dot"></i>
+    <span class="sec-name">${g===''?'All sectors':g.toUpperCase()}</span>
+    ${count!=null?`<span class="sec-count">${count}</span>`:''}</div>`;
 }
 function secBadge(g){if(!g)return'';const c=secColor(g);
   return`<span class="sec-badge" style="background:${c}">${g.toUpperCase()}</span>`;}
@@ -1169,12 +1187,11 @@ function render(d,force){
   const total=entries.length;
   const allGroups=d.universe?.groups||[];
   const grpSel=$('grp');
-  // CMC/CoinGecko-style sector pill filter bar. The legacy <select> is kept
-  // hidden but drives the same filtering so all existing logic is unchanged.
+  // Left-sidebar sector navigation. The legacy <select> is kept hidden but
+  // drives the same filtering so all existing logic is unchanged.
   const cur=grpSel.value;
   const gcount={};Object.values(d.coins||{}).forEach(c=>(c.groups||[]).forEach(g=>gcount[g]=(gcount[g]||0)+1));
-  $('sectorbar').innerHTML='<span class="sb-cap">Sectors</span>'
-    +secPill('',null,cur==='')
+  $('sectorlist').innerHTML=secPill('',null,cur==='')
     +allGroups.map(g=>secPill(g,gcount[g]||0,cur===g)).join('');
   grpSel.style.display='none';
   grpSel.innerHTML='<option value=""></option>'+allGroups.map(g=>`<option value="${g}">${g}</option>`).join('');
@@ -1347,14 +1364,14 @@ document.querySelector('.tt tbody').addEventListener('click',e=>{
 });
 $('filter').addEventListener('input',rerender);
 $('grp').addEventListener('change',rerender);
-// sector pill bar: clicking a pill drives the hidden group select
-$('sectorbar').addEventListener('click',e=>{
-  const p=e.target.closest('.sec-pill'); if(!p)return;
+// sector sidebar: clicking a sector drives the hidden group select
+$('sectorlist').addEventListener('click',e=>{
+  const p=e.target.closest('.sec-item'); if(!p)return;
   $('grp').value=p.dataset.sec;
   $('grp').dispatchEvent(new Event('change'));
 });
-$('sectorbar').addEventListener('keydown',e=>{
-  if(e.key==='Enter'||e.key===' '){const p=e.target.closest('.sec-pill');if(p){e.preventDefault();p.click();}}
+$('sectorlist').addEventListener('keydown',e=>{
+  if(e.key==='Enter'||e.key===' '){const p=e.target.closest('.sec-item');if(p){e.preventDefault();p.click();}}
 });
 
 /* how-to-read drawer */
