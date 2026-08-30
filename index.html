@@ -163,8 +163,9 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 @media(max-width:960px){
   .layout{grid-template-columns:1fr;gap:14px}
   #sidebar{position:static;max-height:none;overflow:visible}
-  #sectorlist{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
-  #sectorlist .sec-item{flex:none;white-space:nowrap}
+  #sectorlist{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 6px}
+  #sectorlist .sec-item{width:auto;flex:none;white-space:nowrap;padding:6px 11px}
+  #sectorlist .sec-item .sec-name{flex:none}
   #sidebar .sb-cap{display:none}
 }
 /* small sector badge reused on cards + table rows */
