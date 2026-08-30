@@ -120,6 +120,86 @@ SYMBOL_GROUPS = {
 # symbol -> sector, for tagging coins in ANY mode (incl. TOP_N discovery)
 SECTOR_LOOKUP = {s: g for g, syms in SYMBOL_GROUPS.items() for s in syms}
 
+# ── Deterministic per-coin sector classification for coins that fall
+# outside the curated SYMBOL_GROUPS lists (e.g. TOP_N / EXTEND_TOP
+# discovery picks). Kept as a separate flat map instead of being folded
+# into SYMBOL_GROUPS, so the group filter stays clean while every tracked
+# coin still resolves to exactly one sector. Curated by hand (no live API
+# category lookups — they drift and misclassify). Symbols already present
+# in SYMBOL_GROUPS are ignored here to keep one-coin-one-sector.
+SECTOR_OVERRIDES = {
+    # ── L1 / sovereign chains ──
+    "MATICUSDT": "l2", "FTMUSDT": "l1", "EOSUSDT": "l1",
+    "ONGUSDT": "l1", "ONTUSDT": "l1", "XEMUSDT": "l1",
+    "WAVESUSDT": "l1", "KDAUSDT": "l1", "MINAUSDT": "l1",
+    "OSMOUSDT": "l1", "CFXUSDT": "l1", "KAIAUSDT": "l1",
+    "KLAYUSDT": "l1", "ARDRUSDT": "l1", "ONEUSDT": "l1",
+    "CKBUSDT": "l1", "DCRUSDT": "l1", "AIONUSDT": "l1",
+    "NEBLUSDT": "l1", "BTGUSDT": "l1", "VITEUSDT": "l1",
+    "COTIUSDT": "l1", "REEFUSDT": "l1", "ELFUSDT": "l1",
+    "ACAUSDT": "l1", "HYPERUSDT": "l1", "SAGAUSDT": "l1",
+    "NILUSDT": "l1", "TOMOUSDT": "l1", "WTCUSDT": "infra",
+    # ── L2 / rollups ──
+    "MOVRUSDT": "l2", "GLMRUSDT": "l2", "LOOMUSDT": "l2", "OMGUSDT": "l2",
+    # ── DeFi ──
+    "ALPACAUSDT": "defi", "MIRUSDT": "defi", "DEXEUSDT": "defi",
+    "HIFIUSDT": "defi", "BAKEUSDT": "defi", "BONDUSDT": "defi",
+    "OOKIUSDT": "defi", "FXSUSDT": "defi", "BALUSDT": "defi",
+    "RENUSDT": "defi", "ANTUSDT": "defi", "CREAMUSDT": "defi",
+    "KP3RUSDT": "defi", "KNCUSDT": "defi", "JSTUSDT": "defi",
+    "FLMUSDT": "defi", "1INCHUSDT": "defi", "SUSHIUSDT": "defi",
+    "ALCXUSDT": "defi", "UNFIUSDT": "defi", "DODOUSDT": "defi",
+    "COWUSDT": "defi", "CVXUSDT": "defi", "CVPUSDT": "defi",
+    "ORNUSDT": "defi", "NBSUSDT": "defi", "EDENUSDT": "defi",
+    "FIDAUSDT": "defi", "LISTAUSDT": "defi", "USUALUSDT": "defi",
+    "SPELLUSDT": "defi", "SXPUSDT": "defi", "WINGUSDT": "defi",
+    "TCTUSDT": "defi", "VGXUSDT": "defi", "FORUSDT": "defi",
+    "FRONTUSDT": "defi", "MAVUSDT": "defi", "TRIBEUSDT": "defi",
+    "EULUSDT": "defi", "AEROUSDT": "defi", "SKYUSDT": "defi",
+    "ALPHAUSDT": "defi", "BETAUSDT": "defi", "SRMUSDT": "defi",
+    "BICOUSDT": "infra", "ORCAUSDT": "defi", "TRIBEUSDT": "defi",
+    # ── AI / agents / data ──
+    "RNDRUSDT": "ai", "AGIXUSDT": "ai", "OCEANUSDT": "ai",
+    "COOKIEUSDT": "ai", "AIUSDT": "ai", "AIGENSYNUSDT": "ai",
+    "VANRYUSDT": "ai", "MIRAUSDT": "ai", "SAPIENUSDT": "ai",
+    "BREVUSDT": "ai", "A2ZUSDT": "ai", "0GUSDT": "ai",
+    "HEIUSDT": "ai", "ASTERUSDT": "ai", "IOUSDT": "depin",
+    # ── Infrastructure / oracles / naming / messaging ──
+    "ZROUSDT": "infra", "ENSUSDT": "infra", "RIFUSDT": "infra",
+    "LITUSDT": "infra", "TWTUSDT": "infra", "SXTUSDT": "infra",
+    "DIAUSDT": "infra", "TRBUSDT": "infra", "CLVUSDT": "infra",
+    "PNTUSDT": "infra", "AMPUSDT": "infra", "CELRUSDT": "infra",
+    "RADUSDT": "infra", "STPTUSDT": "infra", "GNOUSDT": "infra",
+    "MASKUSDT": "infra", "DOCKUSDT": "infra",
+    # ── Privacy ──
+    "XMRUSDT": "privacy", "TORNUSDT": "privacy", "SCRTUSDT": "privacy",
+    "FIROUSDT": "privacy", "ZAMAUSDT": "privacy", "PIVXUSDT": "privacy",
+    "ATAUSDT": "privacy",
+    # ── RWA / tokenized (incl. stablecoins & wrapped) ──
+    "XAUTUSDT": "rwa", "RLUSDUSDT": "rwa", "USDSUSDT": "rwa",
+    "BFUSDUSDT": "rwa", "WBTCUSDT": "rwa",
+    # ── Liquid staking / restaking ──
+    "BETHUSDT": "restaking",
+    # ── Gaming / GameFi / NFTs ──
+    "BNXUSDT": "gaming", "PROMUSDT": "gaming", "DARUSDT": "gaming",
+    "MBOXUSDT": "gaming", "ALICEUSDT": "gaming", "HIGHUSDT": "gaming",
+    "TVKUSDT": "gaming", "YGGUSDT": "gaming", "BIGTIMEUSDT": "gaming",
+    "PORTALUSDT": "gaming", "PYRUSDT": "gaming", "NOTUSDT": "gaming",
+    "HMSTRUSDT": "gaming", "BEAMXUSDT": "gaming", "SUPERUSDT": "gaming",
+    "RAREUSDT": "gaming", "NFPUSDT": "ai",
+    # ── Meme ──
+    "TRUMPUSDT": "meme", "PUMPUSDT": "meme", "BROCCOLI714USDT": "meme",
+    "BOMEUSDT": "meme", "TURBOUSDT": "meme", "GIGGLEUSDT": "meme",
+    "TUTUSDT": "meme", "NEIROUSDT": "meme", "PNUTUSDT": "meme",
+    "PENGUUSDT": "meme", "MUBARAKUSDT": "meme", "HOODBUSDT": "meme",
+    "GENIUSUSDT": "meme", "CHIPUSDT": "meme", "MMTUSDT": "meme",
+    # ── DePIN / compute / storage-adjacent ──
+    "LTOUSDT": "depin", "VANRYUSDT": "ai", "SOLVUSDT": "defi",
+}
+# Hand-curated additions always win over the flat override map; merges in
+# every symbol that is not already claimed by a curated group.
+SECTOR_LOOKUP.update({s: g for s, g in SECTOR_OVERRIDES.items() if s not in SECTOR_LOOKUP})
+
 DATA_OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.json")
 
 
