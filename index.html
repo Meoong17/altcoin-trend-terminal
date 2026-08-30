@@ -291,6 +291,32 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
   .metric-cap{max-width:100%}
   .card{padding:11px 12px}
 }
+/* ── mobile tidy-up (phones & small tablets) ── */
+@media(max-width:720px){
+  .wrap{padding:0 12px 40px}
+  /* header: brand then controls stacked, clean */
+  .hd{flex-wrap:wrap;gap:8px 12px;padding:10px 14px}
+  .hd-right{margin-left:0;width:100%;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .brand h1{font-size:15px;letter-spacing:.16em}
+  #howto-btn{padding:5px 12px;font-size:10px}
+  a[href="validation.html"]{display:none}   /* declutter secondary link on phones */
+  /* controls: filter on its own full-width row, toggles+sort wrap neatly */
+  #ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 12px}
+  #filter{order:10;width:100%;flex-basis:100%}
+  #count{order:1;margin-right:auto}
+  #universe{order:2}
+  #viewtg{order:3;margin-left:auto}
+  #ctrl .cl{order:4}
+  #sort{order:5;max-width:46%;flex:1 1 auto}
+  /* quick stats: two tidy columns */
+  #stats{gap:8px}
+  .stat{min-width:calc(50% - 4px);flex:1 1 calc(50% - 4px)}
+  /* macro single column for phones so the wide Context Gate card isn't cramped */
+  #macro{grid-template-columns:1fr}
+  #regime{flex-wrap:wrap;gap:8px}
+  #regime-state{font-size:13px}
+  .val{font-size:20px}
+}
 
 /* ── quick stats bar ── */
 #stats{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px}
