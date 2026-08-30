@@ -523,6 +523,14 @@ def fetch_klines(symbol, interval="1d", limit=100):
         return None
 
 
+def _exact_diff(a, b):
+    """Exact (a - b) at 4 decimals via Decimal, so the accounting identity
+    `excess == ret(coin) - ret(bench)` holds to the last digit regardless of
+    binary-float noise. a/b are already-rounded 4-decimal floats."""
+    from decimal import Decimal
+    return float((Decimal(str(a)) - Decimal(str(b))).quantize(Decimal("0.0001")))
+
+
 def compute_performance(closes, btc_closes=None, eth_closes=None, is_btc=False, is_eth=False):
     """
     Precise 1D / 7D / 30D performance for a coin, plus excess return vs
@@ -567,9 +575,16 @@ def compute_performance(closes, btc_closes=None, eth_closes=None, is_btc=False, 
             if skip:
                 out[key] = None
                 continue
-            r_coin = ret(closes, lag)
-            r_bench = ret(bseries, lag)
-            out[key] = round(r_coin - r_bench, 4) if (r_coin is not None and r_bench is not None) else None
+            c = ret(closes, lag)
+            b = ret(bseries, lag)
+            r_coin = round(c, 4) if c is not None else None
+            r_bench = round(b, 4) if b is not None else None
+            # Excess must be the difference of the DISPLAYED (4-decimal) returns,
+            # computed in exact Decimal, so `vs_* == ret(coin) - ret(bench)` holds
+            # to the last digit. Subtracting unrounded floats then rounding gives
+            # round(a-b,4), which differs from round(a,4)-round(b,4) by ~1bp in
+            # ~46% of rows (rounding-order artifact) -- that broke the identity.
+            out[key] = _exact_diff(r_coin, r_bench) if (r_coin is not None and r_bench is not None) else None
     return out
 
 
@@ -700,7 +715,12 @@ def analyze_multiple_coins(symbols, btc_symbol="BTCUSDT", eth_symbol="ETHUSDT"):
     # so 0.05s pacing on big universes stays far under the limit.
     pace = 0.05 if len(symbols) > 100 else 0.2
     for symbol in symbols:
-        results[symbol] = analyze_coin(symbol, btc_closes=btc_closes, eth_closes=eth_closes)
+        # ETH reuses the exact shared benchmark series as its own klines so
+        # every coin's excess-vs-ETH is measured against the SAME closes ETH
+        # reports as its own return — removes the ~1bp artifact caused by two
+        # separate near-simultaneous fetches landing on different last candles.
+        kl = eth_klines if symbol == eth_symbol else None
+        results[symbol] = analyze_coin(symbol, btc_closes=btc_closes, eth_closes=eth_closes, klines=kl)
         if results[symbol].get("status") == "ok":
             results[symbol]["data_source"] = "binance"
         time.sleep(pace)
