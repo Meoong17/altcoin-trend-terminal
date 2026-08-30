@@ -61,23 +61,23 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 #howto-btn:hover{border-color:var(--liq);background:rgba(83,200,236,.08)}
 #howto-btn:focus-visible{outline:2px solid var(--liq);outline-offset:2px}
 
-/* ── macro strip ── */
-#macro{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0 12px}
+/* ── macro strip (compact) ── */
+#macro{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0 10px}
 .mbox{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid rgba(233,196,106,.07);
-  border-radius:var(--r);padding:14px 16px;
+  border-radius:var(--r);padding:10px 12px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.035),var(--shadow)}
-.lbl{color:var(--muted);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase}
-.vrow2{display:flex;align-items:baseline;gap:10px;margin:3px 0 2px}
-.val{font-family:var(--disp);font-size:27px;font-weight:700;letter-spacing:.01em}
-.tag{font-size:10px;letter-spacing:.08em;color:var(--muted)}
-.band{height:5px;border-radius:3px;background:linear-gradient(90deg,var(--down),var(--warn) 45%,var(--up));
-  position:relative;margin:9px 0 10px}
-.band i{position:absolute;top:-3.5px;width:2.5px;height:12px;border-radius:2px;background:var(--text);
+.lbl{color:var(--muted);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase}
+.vrow2{display:flex;align-items:baseline;gap:8px;margin:2px 0 1px}
+.val{font-family:var(--disp);font-size:19px;font-weight:700;letter-spacing:.01em}
+.tag{font-size:9px;letter-spacing:.06em;color:var(--muted)}
+.band{height:4px;border-radius:3px;background:linear-gradient(90deg,var(--down),var(--warn) 45%,var(--up));
+  position:relative;margin:6px 0 7px}
+.band i{position:absolute;top:-3px;width:2px;height:10px;border-radius:2px;background:var(--text);
   box-shadow:0 0 0 2px var(--bg);transition:left .8s cubic-bezier(.22,1,.36,1)}
 .band.inv{background:linear-gradient(90deg,var(--up),var(--warn) 55%,var(--down))}
 .band.season{background:linear-gradient(90deg,var(--btc),#8a7350 40%,#3f7f8f 60%,var(--liq))}
-.chips{display:flex;flex-wrap:wrap;gap:5px}
-.chip{font-size:9px;letter-spacing:.03em;padding:2px 6.5px;border-radius:4px;border:1px solid var(--line);
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:8px;letter-spacing:.03em;padding:1.5px 5px;border-radius:4px;border:1px solid var(--line);
   background:var(--panel2);color:var(--muted);transition:border-color .15s}
 .chip b{font-weight:500}
 .chip.p b{color:var(--up)} .chip.n b{color:var(--down)}
