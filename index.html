@@ -117,25 +117,37 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 #ctrl{display:flex;align-items:center;gap:10px;margin:6px 0 16px;flex-wrap:wrap}
 .cl{color:var(--muted);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase}
 #count{margin-right:auto}
-#universe{color:var(--liq)}
 #filter,#sort,#grp{background:var(--panel);border:1px solid var(--line);color:var(--text);
   font-family:var(--mono);font-size:12px;border-radius:var(--r-sm);padding:6px 10px;outline:none;
   transition:border-color .15s}
 #filter{width:150px}
 #filter:focus,#sort:focus,#grp:focus{border-color:var(--liq)}
+/* sort control — clean pill, no label text */
+#sortwrap{display:flex;align-items:center}
+#sortwrap .sel{position:relative;display:inline-flex;align-items:center;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r-sm);
+  transition:border-color .15s,box-shadow .15s}
+#sortwrap .sel:hover,#sortwrap .sel:focus-within{border-color:rgba(233,196,106,.4);
+  box-shadow:0 0 0 1px rgba(233,196,106,.14)}
+#sortwrap .sel::after{content:'▾';position:absolute;right:9px;top:50%;transform:translateY(-50%);
+  color:var(--dim);font-size:10px;pointer-events:none}
+#sortwrap select#sort{appearance:none;-webkit-appearance:none;background:transparent;border:none;
+  color:var(--text);font-family:var(--mono);font-size:11.5px;padding:6px 26px 6px 10px;
+  outline:none;cursor:pointer;max-width:168px;text-overflow:ellipsis}
+#sortwrap select#sort option{background:var(--panel2);color:var(--text)}
 
 /* ── two-column layout: left sector sidebar + main ── */
-.layout{display:grid;grid-template-columns:235px 1fr;gap:20px;align-items:start}
+.layout{display:grid;grid-template-columns:180px 1fr;gap:16px;align-items:start}
 .main{min-width:0;display:grid;gap:0}
-#sidebar{position:sticky;top:74px;align-self:start;
+#sidebar{position:sticky;top:74px;align-self:start;min-width:0;
   background:linear-gradient(180deg,var(--panel),var(--panel2));
-  border:1px solid rgba(233,196,106,.08);border-radius:var(--r);padding:12px;
+  border:1px solid rgba(233,196,106,.08);border-radius:var(--r);padding:10px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.03),var(--shadow);
-  max-height:calc(100vh - 92px);overflow-y:auto}
+  max-height:calc(100vh - 92px);overflow-y:auto;max-width:100%}
 #sidebar .sb-cap{font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
-  margin:0 4px 8px}
-.sec-item{display:flex;align-items:center;gap:9px;width:100%;padding:7px 9px;border-radius:8px;
-  cursor:pointer;color:var(--muted);font-size:11px;letter-spacing:.02em;text-align:left;
+  margin:0 4px 6px}
+.sec-item{display:flex;align-items:center;gap:7px;width:100%;padding:6px 8px;border-radius:7px;
+  cursor:pointer;color:var(--muted);font-size:10.5px;letter-spacing:.02em;text-align:left;
   background:transparent;border:1px solid transparent;font-family:var(--mono);
   transition:background .14s ease,color .14s ease,border-color .14s ease}
 .sec-item:hover{background:rgba(255,255,255,.045);color:var(--text)}
@@ -327,7 +339,6 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
   #ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 12px}
   #filter{order:10;width:100%;flex-basis:100%}
   #count{order:1;margin-right:auto}
-  #universe{order:2}
   #viewtg{order:3;margin-left:auto}
   #ctrl .cl{order:4}
   #sort{order:5;max-width:46%;flex:1 1 auto}
@@ -520,7 +531,6 @@ details.techx[open] summary::before{content:'▾ ';color:var(--liq)}
 
   <div id="ctrl">
     <span id="count" class="cl"></span>
-    <span id="universe" class="cl"></span>
     <select id="grp" style="display:none"><option value="">all groups</option></select>
     <input id="filter" type="text" placeholder="filter symbol…" autocomplete="off" aria-label="Filter symbols">
     <div id="viewtg" role="group" aria-label="View">
@@ -528,8 +538,9 @@ details.techx[open] summary::before{content:'▾ ';color:var(--liq)}
       <button id="vt-cards" type="button">CARDS</button>
       <button id="vt-short" type="button" data-tip="A+/A Entry Timing only, sorted so genuinely-researched coins (real VaF analyst input, not just auto-computed) come first, with a warning when two shortlisted coins are highly correlated with each other.">SHORTLIST</button>
     </div>
-    <label class="cl" for="sort">sort</label>
-    <select id="sort">
+    <div id="sortwrap">
+      <div class="sel">
+        <select id="sort">
       <option value="trend_score">trend (Uptrend/Downtrend/Range)</option>
       <option value="vol_ratio">volume spike (ratio)</option>
       <option value="chg24">24h change</option>
@@ -538,7 +549,9 @@ details.techx[open] summary::before{content:'▾ ';color:var(--liq)}
       <option value="fundamental_score">fundamental</option>
       <option value="vaf_total">VaF</option>
       <option value="entry_grade">entry timing</option>
-    </select>
+        </select>
+      </div>
+    </div>
   </div>
 
   <div id="coins" aria-live="polite"></div>
@@ -1104,7 +1117,6 @@ function cardBody(sym,c){
           `<span class="neu">${cov?cov.used+'/'+cov.total:'n/a'}</span>`, condCoverage(cov))}
       </div>
       ${perfPanel(c)}
-      ${taPanel(c.ta)}
       <div class="vol">
         <div class="vh"><span class="k" data-tip="Daily quote volume in USDT, closed candles only — today's partial candle is excluded so mornings don't fake a volume collapse.">${c.data_source==='coinstats'?'Volume · history n/a on fallback source':'Volume · 14d (closed candles)'}</span><span class="amt">${c.vol_24h_usd!=null?fmtUsd(c.vol_24h_usd):'n/a'}</span></div>
         ${volbars(vols)}
@@ -1272,7 +1284,6 @@ function render(d,force){
     return bv-av;
   });
   $('count').textContent=entries.length+(q||gq?' / '+total:'')+' coins';
-  $('universe').textContent=d.universe?.mode&&d.universe.mode!=='default'?'· '+d.universe.mode.toUpperCase():'';
 
   // ── quick stats over the filtered set ──
   const okRows=entries.filter(([,c])=>c.status==='ok').map(([,c])=>c);
