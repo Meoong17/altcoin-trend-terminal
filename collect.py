@@ -246,6 +246,26 @@ SECTOR_OVERRIDES = {
     "BARDUSDT": "meme", "MEGAUSDT": "meme",
     # ── DePIN / compute ──
     "PONDUSDT": "depin",
+    # ══ Third pass: last "other" coins researched & classified (Binance-listed) ══
+    "CELOUSDT": "l1",        # Celo — mobile-first L1
+    "XPLUSDT": "l1",         # Plasma — stablecoin-focused L1
+    "WRXUSDT": "defi",       # WazirX — exchange token
+    "ENSOUSDT": "defi",      # Enso — intent/automation layer
+    "BTCSTUSDT": "defi",     # BTCST — hashrate yield token
+    "DOLOUSDT": "defi",      # Dolomite — money market / lending
+    "YBUSDT": "defi",        # Yield Basis — yield optimization
+    "TREEUSDT": "defi",      # Treehouse — fixed-income yield protocol
+    "PHBUSDT": "ai",         # Phoenix — decentralized AI compute
+    "SHELLUSDT": "ai",       # MyShell — decentralized AI consumer layer
+    "GTOUSDT": "gaming",     # Gifto — gifting/streaming
+    "DUSDT": "gaming",       # Dar Open Network (ex Mines of Dalarnia)
+    "BMTUSDT": "infra",      # Bubblemaps — on-chain data analytics
+    "TOWNSUSDT": "infra",    # Towns — decentralized social
+    "SIGNUSDT": "infra",     # Sign Protocol — attestation infra
+    "UUSDT": "infra",        # Union — ZK interoperability layer
+    "LAUSDT": "infra",       # Lagrange — ZK prover network
+    "OPGUSDT": "ai_compute", # OpenGradient — verifiable AI compute
+    "ATUSDT": "ai_compute",  # APRO — decentralized compute
 }
 # Hand-curated additions always win over the flat override map; merges in
 # every symbol that is not already claimed by a curated group.
