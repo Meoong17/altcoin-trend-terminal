@@ -122,12 +122,12 @@ def _fetch_all_parallel():
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     series_needed = [
-        ("WALCL", 13),       # Fed balance sheet
-        ("ECBASSETSW", 13),  # ECB balance sheet
-        ("JPNASSETS", 13),   # BOJ balance sheet
+        ("WALCL", 53),       # Fed balance sheet — WEEKLY, need 52-obs lag for true YoY
+        ("ECBASSETSW", 53),  # ECB balance sheet — WEEKLY, 52-obs lag
+        ("JPNASSETS", 53),   # BOJ balance sheet — WEEKLY, 52-obs lag
         ("WTREGEN", 8),      # TGA balance
         ("RRPONTSYD", 8),    # RRP facility
-        ("M2SL", 13),        # M2 money supply
+        ("M2SL", 13),        # M2 money supply — MONTHLY, 12-obs lag
         ("MYAGM2CNM189N", 13),  # China M2 (Broad Money, OECD via FRED) — see
                                  # note in _compute_china_component() below;
                                  # UNVERIFIED series ID, confirm on FRED before relying on this.
@@ -150,13 +150,20 @@ def _fetch_all_parallel():
     return True
 
 
-def _yoy_chg(arr):
-    """Compute YoY % change from array [latest, ..., oldest]."""
-    if not arr or len(arr) < 13:
+def _yoy_chg(arr, lag=12):
+    """Compute annual YoY % change from array [latest, ..., oldest].
+
+    lag is the number of observations back for a one-year period: 12 for
+    monthly series, 52 for weekly series (WALCL / ECBASSETSW / JPNASSETS are
+    weekly FRED series — using the monthly 12-obs lag on them yields only a
+    ~3-month change, mislabeled as YoY and miscalibrated against the annual
+    mean/std below).
+    """
+    if not arr or len(arr) < lag + 1:
         return None
-    if arr[12] == 0:
+    if arr[lag] == 0:
         return 0
-    return (arr[0] - arr[12]) / arr[12] * 100
+    return (arr[0] - arr[lag]) / arr[lag] * 100
 
 
 def _z_score(value, mean, std):
@@ -200,23 +207,23 @@ def compute_global_liquidity_factor(force_refresh=False):
     _fetch_all_parallel()
 
     # ── 1. Fed Balance Sheet YoY ──
-    walcl = _FRED_CACHE.get("WALCL:13")
+    walcl = _FRED_CACHE.get("WALCL:53")
     walcl = walcl[0] if isinstance(walcl, tuple) else walcl
-    fed_yoy = _yoy_chg(walcl) if walcl else None
+    fed_yoy = _yoy_chg(walcl, lag=52) if walcl else None
     # Normalize: historical mean ~5.5%, std ~8%
     # Positive = expansion (bullish for liquidity)
     fed_z = _z_score(fed_yoy, 5.5, 8.0) if fed_yoy is not None else 0
 
     # ── 2. ECB Balance Sheet YoY ──
-    ecb = _FRED_CACHE.get("ECBASSETSW:13")
+    ecb = _FRED_CACHE.get("ECBASSETSW:53")
     ecb = ecb[0] if isinstance(ecb, tuple) else ecb
-    ecb_yoy = _yoy_chg(ecb) if ecb else None
+    ecb_yoy = _yoy_chg(ecb, lag=52) if ecb else None
     ecb_z = _z_score(ecb_yoy, 4.0, 7.0) if ecb_yoy is not None else 0
 
     # ── 3. BOJ Balance Sheet YoY ──
-    jpn = _FRED_CACHE.get("JPNASSETS:13")
+    jpn = _FRED_CACHE.get("JPNASSETS:53")
     jpn = jpn[0] if isinstance(jpn, tuple) else jpn
-    jpn_yoy = _yoy_chg(jpn) if jpn else None
+    jpn_yoy = _yoy_chg(jpn, lag=52) if jpn else None
     jpn_z = _z_score(jpn_yoy, 3.0, 6.0) if jpn_yoy is not None else 0
 
     # ── 3b. China M2 YoY ──

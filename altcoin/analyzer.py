@@ -154,7 +154,7 @@ def _compute_technical_analysis(closes, highs, lows, quote_volumes, rsi):
             out["ma_alignment"] = "price between MAs — mixed"
 
     # MACD (12/26/9)
-    if len(closes) >= 26:
+    if len(closes) >= 34:   # 25 for the MACD warm-up + 9 for the signal EMA
         e12, e26 = _ema_series(closes, 12), _ema_series(closes, 26)
         macd_series = [a - b for a, b in zip(e12, e26)]
         macd_valid = macd_series[25:]
@@ -915,7 +915,20 @@ if __name__ == "__main__":
     assert _compute_flow_metrics(buy_vols, [None]*len(buy_vols)) is None, \
         "no taker-buy -> flow None, component renormalized, never fabricated"
     assert score_flow_rotation(None, None, None) is None
-    print("✅ PASS: directional flow — separate from volume, buy-press rising > sell, honest None on missing taker-buy\n")
+    # Regression (B2): a net-SELLER with ACCELERATING selling must score BELOW
+    # neutral. The old seller-branch (`50 + strength - momentum`) inverted this —
+    # intensifying selling scored ABOVE neutral (e.g. 53.0) while easing scored
+    # 11.0. Fix: momentum is additive in both regimes.
+    accel_sell = score_flow_rotation(0.40, 0.30, 0.7)   # buy<0.5, share falling fast
+    ease_sell  = score_flow_rotation(0.40, 0.50, 1.4)   # buy<0.5, share recovering
+    assert accel_sell < 50, f"accelerating sell must read below neutral, got {accel_sell}"
+    assert ease_sell > accel_sell, "easing sell pressure must outscore accelerating sell"
+    # continuity across the 0.5 buy/sell boundary (no 2*|momentum| jump)
+    low  = score_flow_rotation(0.4999, 0.45, 1.1)
+    high = score_flow_rotation(0.5001, 0.45, 1.1)
+    assert abs(low - high) < 0.5, f"score must be continuous across 0.5 boundary: {low} vs {high}"
+    print("✅ PASS: flow-rotation regression (B2) — accelerating sell < neutral, continuous at 0.5")
+    print(f"✅ PASS: directional flow — separate from volume, buy-press rising > sell, honest None on missing taker-buy\n")
 
     # Top-N discovery filter: pure-function test with synthetic ticker rows.
     fake_tickers = [
@@ -1159,6 +1172,23 @@ if __name__ == "__main__":
     assert res_injected["features"]["prox_30d_high"] == 1.0
     assert res_injected["vol_ratio"] > 2.0, "volume metrics fully alive on injected klines"
     print("✅ PASS: Bybit tier — newest-first reversal, turnover-as-quote-volume, full metric parity\n")
+
+    # Regression (B1): a short-but-valid close history (26-33 bars) must NOT
+    # crash _compute_technical_analysis. The old guard (len>=26) let MACD reach
+    # `sig[-1]` on a None signal EMA -> TypeError. MACD now requires >=34 bars
+    # (25-bar warm-up + 9-bar signal EMA); shorter histories skip it gracefully.
+    for n_short in (26, 30, 33):
+        c_short = [100.0 + i for i in range(n_short)]
+        h_short = [x + 1 for x in c_short]; l_short = [x - 1 for x in c_short]
+        ta_short = _compute_technical_analysis(c_short, h_short, l_short,
+                                               [1e9] * n_short, 50.0)
+        assert ta_short is not None and "macd" not in ta_short, \
+            f"MACD must be skipped (not crash) on {n_short}-bar history"
+    c_ok = [100.0 + i for i in range(34)]
+    h_ok = [x + 1 for x in c_ok]; l_ok = [x - 1 for x in c_ok]
+    ta_ok = _compute_technical_analysis(c_ok, h_ok, l_ok, [1e9] * 34, 50.0)
+    assert "macd" in ta_ok, "MACD must compute once history reaches 34 bars"
+    print("✅ PASS: MACD regression (B1) — 26-33 bar history degrades gracefully, >=34 computes\n")
 
     # Multi-group universe resolver (collect.py)
     import os as _o, sys as _s

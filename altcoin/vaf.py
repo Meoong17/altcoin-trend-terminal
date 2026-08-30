@@ -372,9 +372,18 @@ def verdict_action(vaf, actual, otf, vfr, coverage_ok):
         return "Elite Watchlist", "Watch for Entry" if otf < 35 else "Wait for Confirmation"
     if 114 <= vaf < 120 and pos and otf >= 35:
         return "Elite Candidate", "Accumulate"
+    if 114 <= vaf < 120:
+        # Guarded fallback: keep the elite tier consistent instead of falling
+        # through to the <80 'Speculative' catch-all when the OTF/coverage gate
+        # isn't met (analogous to the vaf>=120 'Elite Watchlist' branch).
+        return "Elite Watchlist", "Watch for Entry" if otf < 35 else "Wait for Confirmation"
     if 105 <= vaf < 114 and otf >= 35:
         return "Strong Candidate", "Accumulate" if pos else "Wait for Confirmation"
+    if 105 <= vaf < 114:
+        return "Strong Watchlist", "Watch for Entry"
     if 95 <= vaf < 105 and otf >= 35:
+        return "High Watch / Selective", "Watch for Entry"
+    if 95 <= vaf < 105:
         return "High Watch / Selective", "Watch for Entry"
     if 80 <= vaf < 95:
         return "Thesis-Dependent / Trade Only", "Trade Only" if otf >= 35 else "Wait for Confirmation"

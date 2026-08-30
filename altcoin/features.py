@@ -270,10 +270,12 @@ def score_flow_rotation(buy_share_3d, buy_share_7d, flow_trend):
     # BUILDING (early phase) vs fading, sign-matched to the direction.
     strength = (buy_share_3d - 0.5) * 150.0          # 0.50->0, 0.55->+7.5, 0.45->-7.5
     momentum = (flow_trend - 1.0) * 60.0             # 1.10->+6, 0.95->-3
-    if buy_share_3d >= 0.5:
-        score = 50 + strength + momentum
-    else:
-        score = 50 + strength - momentum             # sellers + fading = deeper below 50
+    # momentum is signed by (flow_trend-1): <1 = buy share fading (more selling,
+    # pulls below neutral), >1 = buy share building (less bearish). Add it in
+    # BOTH regimes so a rising buy-share is uniformly less-bearish regardless of
+    # which side of the 0.5 buy/sell line we are on (keeps the score continuous
+    # across 0.5 and monotonic in both inputs).
+    score = 50 + strength + momentum
     return round(max(0.0, min(100.0, score)), 1)
 
 
