@@ -15,6 +15,7 @@
   --text:#E2E7F0; --muted:#758092; --dim:#414B5E;
   --up:#34D98B; --down:#F26B5C; --warn:#E8B44F; --liq:#53C8EC; --vaf:#9D7BEA;
   --btc:#F7931A;
+  --gold:#E9C46A; --gold2:#B08D3E; --champagne:#F3E5C0;
   --mono:'JetBrains Mono','DejaVu Sans Mono',monospace;
   --disp:'Space Grotesk','Liberation Sans',sans-serif;
   --r:10px; --r-sm:6px;
@@ -25,22 +26,27 @@
 html{scrollbar-color:var(--dim) var(--bg);overflow-x:hidden}
 body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.55;
   min-height:100vh;font-variant-numeric:tabular-nums;overflow-x:hidden;
-  background-image:radial-gradient(1200px 500px at 50% -220px,rgba(83,200,236,.07),transparent 65%)}
+  background-image:
+    radial-gradient(1200px 500px at 50% -220px,rgba(83,200,236,.07),transparent 65%),
+    radial-gradient(900px 420px at 85% -120px,rgba(233,196,106,.05),transparent 60%),
+    radial-gradient(700px 380px at 8% 10%,rgba(157,123,234,.04),transparent 60%)}
 .wrap{max-width:1160px;margin:0 auto;padding:0 18px 56px}
 ::selection{background:rgba(83,200,236,.25)}
 
 /* ── sticky glass header ── */
 header{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  background:rgba(10,13,19,.78);border-bottom:1px solid var(--line)}
+  background:rgba(10,13,19,.78);border-bottom:1px solid transparent;
+  box-shadow:inset 0 -1px 0 rgba(233,196,106,.10),0 1px 0 rgba(0,0,0,.35)}
 .hd{max-width:1160px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:14px}
 .brand{display:flex;align-items:center;gap:11px;white-space:nowrap}
 .mark{width:30px;height:30px;flex:none;border-radius:8px;position:relative;
-  background:linear-gradient(135deg,#1A2230,#0D1119);border:1px solid var(--line2);
-  box-shadow:inset 0 1px 0 rgba(226,231,240,.07),0 2px 8px rgba(0,0,0,.5)}
+  background:linear-gradient(135deg,#1A2230,#0D1119);border:1px solid rgba(233,196,106,.25);
+  box-shadow:inset 0 1px 0 rgba(226,231,240,.07),0 0 12px rgba(233,196,106,.12),0 2px 8px rgba(0,0,0,.5)}
 .mark::before{content:"";position:absolute;inset:8px;transform:rotate(45deg);border-radius:2px;
-  background:linear-gradient(135deg,#E8EDF5 0%,#9fb6c4 40%,var(--liq) 100%);opacity:.92}
+  background:linear-gradient(135deg,#FBF4E3 0%,var(--champagne) 35%,var(--gold) 70%,var(--gold2) 100%);
+  opacity:.95;box-shadow:0 0 6px rgba(233,196,106,.5)}
 h1{font-family:'Marcellus',var(--disp);font-weight:400;font-size:17px;letter-spacing:.22em;line-height:1.05;
-  background:linear-gradient(100deg,#F2F5FA 0%,#C9D4E2 45%,#7fc9e2 100%);
+  background:linear-gradient(100deg,#FBF6EC 0%,var(--champagne) 30%,var(--gold) 55%,#8FC7DE 100%);
   -webkit-background-clip:text;background-clip:text;color:transparent}
 h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.42em;color:var(--muted);
   -webkit-text-fill-color:var(--muted);margin-bottom:2px}
@@ -57,8 +63,9 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 
 /* ── macro strip ── */
 #macro{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0 12px}
-.mbox{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
-  border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}
+.mbox{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid rgba(233,196,106,.07);
+  border-radius:var(--r);padding:14px 16px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),var(--shadow)}
 .lbl{color:var(--muted);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase}
 .vrow2{display:flex;align-items:baseline;gap:10px;margin:3px 0 2px}
 .val{font-family:var(--disp);font-size:27px;font-weight:700;letter-spacing:.01em}
@@ -94,12 +101,39 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 #filter{width:150px}
 #filter:focus,#sort:focus,#grp:focus{border-color:var(--liq)}
 
+/* ── sector taxonomy bar (CoinGecko/CoinMarketCap-style color pills) ── */
+#sectorbar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;
+  margin:-2px 0 16px;padding:11px 13px;
+  background:linear-gradient(180deg,var(--panel),var(--panel2));
+  border:1px solid rgba(233,196,106,.08);border-radius:var(--r);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03),var(--shadow)}
+#sectorbar .sb-cap{font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+  margin-right:3px;white-space:nowrap}
+.sec-pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);
+  font-size:10px;font-weight:600;letter-spacing:.03em;color:#fff;
+  padding:4px 10px;border-radius:999px;cursor:pointer;user-select:none;
+  border:1px solid transparent;white-space:nowrap;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 1px 3px rgba(0,0,0,.45);
+  transition:transform .14s ease,filter .14s ease}
+.sec-pill:hover{transform:translateY(-1px);filter:brightness(1.12)}
+.sec-pill b{font-weight:700;opacity:.85;font-size:9px}
+.sec-pill.on{outline:2px solid rgba(255,255,255,.9);outline-offset:1px}
+.sec-pill.on::after{content:"✕";margin-left:1px;font-size:9px;opacity:.92}
+.sec-pill.all{background:linear-gradient(180deg,#2E394B,#1B2230);color:var(--text)}
+.sec-pill.all.on{outline-color:var(--liq)}
+.sec-pill:focus-visible{outline:2px solid var(--liq);outline-offset:2px}
+/* small sector badge reused on cards + table rows */
+.sec-badge{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.05em;color:#fff;
+  padding:1.5px 6px;border-radius:999px;vertical-align:1px;white-space:nowrap;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 1px 2px rgba(0,0,0,.4)}
+
 /* ── coin grid & cards ── */
 #coins{display:grid;grid-template-columns:repeat(auto-fill,minmax(295px,1fr));gap:10px}
-.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
-  border-radius:var(--r);padding:12px 13px;box-shadow:var(--shadow);min-width:0;
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid rgba(233,196,106,.06);
+  border-radius:var(--r);padding:12px 13px;min-width:0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03),var(--shadow);
   transition:transform .18s ease,box-shadow .18s ease,border-color .18s}
-.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover)}
+.card:hover{transform:translateY(-2px);border-color:rgba(233,196,106,.18);box-shadow:var(--shadow-hover)}
 .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
 .vfrow{display:flex;align-items:center;gap:6px;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;margin:1px 0 6px;cursor:help}
 .vfrow b{font-family:var(--disp);font-weight:700;font-size:10px}
@@ -251,7 +285,8 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
 /* ── quick stats bar ── */
 #stats{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px}
 .stat{flex:1;min-width:130px;background:linear-gradient(180deg,var(--panel),var(--panel2));
-  border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 12px;box-shadow:var(--shadow)}
+  border:1px solid rgba(233,196,106,.07);border-radius:var(--r-sm);padding:8px 12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03),var(--shadow)}
 .stat .sv{font-family:var(--disp);font-size:17px;font-weight:700}
 .stat .sk2{color:var(--muted);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;display:block}
 
@@ -268,7 +303,7 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
   border:1px solid rgba(232,180,79,.35)}
 .shortlist-empty{color:var(--muted);padding:32px 0;text-align:center;font-size:12px}
 #divscore{grid-column:1/-1;margin:0 0 12px;padding:12px 14px;border-radius:var(--r);
-  background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line)}
+  background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid rgba(233,196,106,.08)}
 #divscore .dh{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
 #divscore .drow{display:flex;align-items:baseline;gap:12px}
 #divscore .dval{font-family:var(--disp);font-weight:700;font-size:24px}
@@ -284,7 +319,8 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
 
 /* ── table mode ── */
 #tablewrap{display:none;background:linear-gradient(180deg,var(--panel),var(--panel2));
-  border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:auto;max-width:100%}
+  border:1px solid rgba(233,196,106,.08);border-radius:var(--r);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03),var(--shadow);overflow:auto;max-width:100%}
 table.tt{width:100%;border-collapse:collapse;font-size:11.5px;min-width:840px}
 .tt thead th{position:sticky;top:0;background:#151B28;color:var(--muted);font-weight:500;
   font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;text-align:right;
@@ -422,6 +458,8 @@ details.techx[open] summary::before{content:'▾ ';color:var(--liq)}
     </select>
   </div>
 
+  <div id="sectorbar" aria-label="Filter by sector"></div>
+
   <div id="coins" aria-live="polite"></div>
   <div id="tablewrap"><table class="tt"><thead></thead><tbody></tbody></table></div>
   <button id="showmore" type="button">SHOW 100 MORE</button>
@@ -486,6 +524,23 @@ const fmtPx=v=>v>=1000?v.toLocaleString('en-US',{maximumFractionDigits:0}):v>=1?
 const pct=v=>(v>0?'+':'')+(v*100).toFixed(2)+'%';
 const cls=(v,hi,lo)=>v==null?'neu':v>=hi?'pos':v<=lo?'neg':'neu';
 const scoreColor=s=>s>=60?'var(--up)':s>=40?'var(--warn)':'var(--down)';
+// ── Sector taxonomy: fixed color identity per sector (CMC/CoinGecko-style) ──
+const SEC_COLORS={l1:'#F7931A',l2:'#E8A63B',defi:'#2ECC7B',ai:'#9D7BEA',ai_compute:'#B07CF0',
+  infra:'#53C8EC',depin:'#3FC4C4',depin_infra:'#2FA8B0',storage:'#4FC98C',credit:'#5FA8D8',
+  gaming:'#E8605C',meme:'#E8498C',privacy:'#8A94A6',rwa:'#D9A441',restaking:'#A78BFA',other:'#6B7686'};
+const secColor=g=>SEC_COLORS[g]||'#6B7686';
+const hexRgb=h=>{h=h.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];};
+const shade=(h,pct)=>{const[r,g,b]=hexRgb(h);const f=x=>Math.max(0,Math.min(255,Math.round(x*(1+pct/100))));
+  return`rgb(${f(r)},${f(g)},${f(b)})`;};
+function secPill(g,count,active){
+  const c=secColor(g);
+  return `<span class="sec-pill${g===''?' all':''}${active?' on':''}" data-sec="${g}" role="button" tabindex="0"
+    style="background:linear-gradient(180deg,${c},${shade(c,-14)})"
+    data-tip="${g===''?'Show all sectors':'Filter to the '+g.toUpperCase()+' sector'}" aria-pressed="${active}">
+    ${g===''?'ALL':g.toUpperCase()}${count!=null?`<b>${count}</b>`:''}</span>`;
+}
+function secBadge(g){if(!g)return'';const c=secColor(g);
+  return`<span class="sec-badge" style="background:${c}">${g.toUpperCase()}</span>`;}
 const GLF_NAMES={fed:'FED',ecb:'ECB',jpn:'BOJ',china:'CN M2',m2:'US M2',dxy:'DXY',tga:'TGA',rrp:'RRP'};
 const compZ=v=>Array.isArray(v)?v[0]:(typeof v==='object'&&v!==null?v.z??v.value:v);
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -581,6 +636,7 @@ function renderDiversity(short){
   if(!ds)return'';
   const flag=ds.diversity<40;
   const oneSector=ds.sectors.length===1;
+  const secList=ds.sectors.map(s=>secBadge(s)).join(' ');
   const tagColor=flag?'var(--down)':ds.diversity<60?'var(--warn)':'var(--up)';
   const tagBg=flag?'rgba(242,107,92,.12)':ds.diversity<60?'rgba(232,180,79,.12)':'rgba(52,217,139,.12)';
   const label=flag?'HIGH CONCENTRATION':ds.diversity<60?'MODERATE':'DIVERSIFIED';
@@ -588,7 +644,7 @@ function renderDiversity(short){
     <div class="dh" data-tip="1 minus the average pairwise correlation among shortlisted coins' 30d daily returns, as a percentage. Low = these aren't independent bets, they mostly move together.">PORTFOLIO DIVERSITY \u2014 THIS SHORTLIST</div>
     <div class="drow"><span class="dval" style="color:${tagColor}">${ds.diversity}%</span>
       <span class="dtag" style="background:${tagBg};color:${tagColor}">${label}</span></div>
-    <div class="dnames">${short.length} coins${oneSector?` \u2014 all tagged <b>${ds.sectors[0].toUpperCase()}</b>, one sector bet`:` across ${ds.sectors.length} sectors (${ds.sectors.map(s=>s.toUpperCase()).join(', ')})`}</div>
+    <div class="dnames">${short.length} coins${oneSector?` \u2014 all tagged ${secList}, one sector bet`:` across ${ds.sectors.length} sectors ${secList}`}</div>
   </div>`;
 }
 
@@ -908,7 +964,7 @@ function cardBody(sym,c){
     'For protocol tokens the VaF/F-Score chips are the measured-value view (still pending the ≥60-day test). '+
     'Missing inputs are excluded and the remaining weights renormalized, never filled with zero.';
   return `      <div class="head">
-        <span class="sym">${sym.replace('USDT','')}<small>/USDT${c.groups?' · '+c.groups.map(g=>g.toUpperCase()).join(','):''}</small>${srcBadge}${infoIcon(cardTip)}</span>
+        <span class="sym">${sym.replace('USDT','')}<small>/USDT</small>${c.groups?secBadge(c.groups[0]):''}${srcBadge}${infoIcon(cardTip)}</span>
         <span class="px"><b>${fmtPx(c.latest_price)}</b>
           <span class="${cls(chg24,0,0)}">${chg24!=null?pct(chg24)+' 24h':''}</span></span>
       </div>
@@ -1113,15 +1169,16 @@ function render(d,force){
   const total=entries.length;
   const allGroups=d.universe?.groups||[];
   const grpSel=$('grp');
-  if(allGroups.length>1){
-    if(grpSel.options.length!==allGroups.length+1){
-      const keep=grpSel.value;
-      const gcount={};Object.values(d.coins||{}).forEach(c=>(c.groups||[]).forEach(g=>gcount[g]=(gcount[g]||0)+1));
-      grpSel.innerHTML='<option value="">all groups</option>'+allGroups.map(g=>`<option value="${g}">${g.toUpperCase()} (${gcount[g]||0})</option>`).join('');
-      grpSel.value=keep;
-    }
-    grpSel.style.display='inline-block';
-  }else{grpSel.style.display='none';}
+  // CMC/CoinGecko-style sector pill filter bar. The legacy <select> is kept
+  // hidden but drives the same filtering so all existing logic is unchanged.
+  const cur=grpSel.value;
+  const gcount={};Object.values(d.coins||{}).forEach(c=>(c.groups||[]).forEach(g=>gcount[g]=(gcount[g]||0)+1));
+  $('sectorbar').innerHTML='<span class="sb-cap">Sectors</span>'
+    +secPill('',null,cur==='')
+    +allGroups.map(g=>secPill(g,gcount[g]||0,cur===g)).join('');
+  grpSel.style.display='none';
+  grpSel.innerHTML='<option value=""></option>'+allGroups.map(g=>`<option value="${g}">${g}</option>`).join('');
+  grpSel.value=cur;
   const gq=grpSel.value;
   if(gq)entries=entries.filter(([,c])=>(c.groups||[]).includes(gq));
   if(q)entries=entries.filter(([s])=>s.includes(q));
@@ -1235,7 +1292,7 @@ function render(d,force){
                     c.data_source==='coinstats'?`<span class="chip n">CS</span>`:''].join('');
       rows+=`<tr class="mrow" data-sym="${sym}">
         <td>${idx+1}</td>
-        <td><span class="tsym">${sym.replace('USDT','')}<small> ${c.groups?c.groups[0].toUpperCase():''}</small></span></td>
+        <td><span class="tsym">${sym.replace('USDT','')} ${c.groups?secBadge(c.groups[0]):''}</span></td>
         <td>${fmtPx(c.latest_price)}</td>
         <td class="${cls(chg24,0,0)}">${chg24!=null?pct(chg24):'—'}</td>
         <td class="${_tc}" style="font-weight:700;font-size:10.5px">${_tw}</td>
@@ -1290,6 +1347,15 @@ document.querySelector('.tt tbody').addEventListener('click',e=>{
 });
 $('filter').addEventListener('input',rerender);
 $('grp').addEventListener('change',rerender);
+// sector pill bar: clicking a pill drives the hidden group select
+$('sectorbar').addEventListener('click',e=>{
+  const p=e.target.closest('.sec-pill'); if(!p)return;
+  $('grp').value=p.dataset.sec;
+  $('grp').dispatchEvent(new Event('change'));
+});
+$('sectorbar').addEventListener('keydown',e=>{
+  if(e.key==='Enter'||e.key===' '){const p=e.target.closest('.sec-pill');if(p){e.preventDefault();p.click();}}
+});
 
 /* how-to-read drawer */
 const howto=$('howto');
