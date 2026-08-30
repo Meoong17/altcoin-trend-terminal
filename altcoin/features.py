@@ -246,28 +246,35 @@ def score_participation(vol_ratio, vol_trend):
     return round(sum(parts) / len(parts), 1)
 
 
-def score_flow_rotation(vol_ratio, vol_trend, prox_30d_high):
-    """Inflow/outflow rotation early-trigger component (0-100). Proxied
-    from volume direction vs price position (net-buy / exchange-flow legs
-    are NOT free-tier, so this is an honest proxy, never a fabricated
-    order-flow number):
-      INFLOW  : volume spiking (vol_ratio>=1.2) while price still low in
-                its 30d range (<0.5) -> money rotating IN before price
-                reprises ('money before price' early trigger) -> high
-      OUTFLOW : volume spiking while price already extended (>=0.85) ->
-                distribution risk -> low; also drying participation -> low
-      NEUTRAL : no rotation signal -> mid.
-    User requested this inflow/outflow rotation be computed as an early
-    trigger. None-safe."""
-    if vol_ratio is None or prox_30d_high is None:
+def score_flow_rotation(buy_share_3d, buy_share_7d, flow_trend):
+    """DIRECTIONAL-FLOW component (0-100) — answers WHO is pressing the
+    market and WHICH WAY, conceptually distinct from volume/participation
+    (volume = activity; flow = directional pressure). Inputs are the
+    taker-buy share series from _compute_flow_metrics() (Binance taker-buy
+    / total volume):
+      buy_share_3d/7d : fraction of volume executed by AGGRESSIVE BUYERS
+                        (>0.5 = buyers pressing, <0.5 = sellers)
+      flow_trend      : 3d share / 7d share — is buy pressure BUILDING
+                        (early accumulation) or fading?
+    Early-phase sensitivity: the score peaks when buy pressure is BOTH
+    strong (>0.5) AND rising (flow_trend > 1) — money pressing in before
+    price has fully re-priced. Returns None when directional flow is not
+    available (OKX/Bybit fallback tiers have no taker-buy field) — the
+    component is then excluded and weights renormalized. Never fabricated.
+    """
+    if buy_share_3d is None or buy_share_7d is None or flow_trend is None:
         return None
-    if vol_ratio >= 1.2 and prox_30d_high < 0.5:
-        return 85.0   # inflow: volume before price
-    if vol_ratio >= 1.2 and prox_30d_high >= 0.85:
-        return 30.0   # outflow/distribution: volume after price ran
-    if vol_trend is not None and vol_trend < 0.95:
-        return 40.0   # drying participation
-    return 55.0
+    # Score is symmetric around a 50 neutral: above = net buyers pressing,
+    # below = net sellers. Strength scales with distance from the 0.5
+    # buy-sell line; momentum (flow_trend-1) rewards pressure that is
+    # BUILDING (early phase) vs fading, sign-matched to the direction.
+    strength = (buy_share_3d - 0.5) * 150.0          # 0.50->0, 0.55->+7.5, 0.45->-7.5
+    momentum = (flow_trend - 1.0) * 60.0             # 1.10->+6, 0.95->-3
+    if buy_share_3d >= 0.5:
+        score = 50 + strength + momentum
+    else:
+        score = 50 + strength - momentum             # sellers + fading = deeper below 50
+    return round(max(0.0, min(100.0, score)), 1)
 
 
 def score_components(f, rsi, participation=None, flow_rotation=None):

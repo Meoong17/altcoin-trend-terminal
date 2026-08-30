@@ -201,4 +201,35 @@ trend model compares a different asset class.
   numbers therefore still include tokenized-equity history (conservative,
   not a leak); a full purge is optional and deferred.
 
+## Volume ≠ Flow — directional flow from taker-buy (2026-08)
+
+Conceptual distinction (user directive): **volume** tells you there is
+activity; **flow** answers WHO is pressing the market and WHICH WAY. The
+previous `flow_rotation` was a proxy (volume-spike vs price position) —
+still fundamentally a volume re-encode. This was replaced with a REAL
+directional-flow signal:
+
+- `fetch_klines` now captures Binance **takerBuyQuoteVolume** (kline
+  index 10) — the quote volume executed by AGGRESSIVE BUYERS (takers
+  hitting the ask). Public endpoint, no key.
+- `_compute_flow_metrics()` derives the taker-buy SHARE per closed day
+  (taker-buy / total), its 3d and 7d means, and `flow_trend` (3d/7d). A
+  share >0.5 = buyers pressing; <0.5 = sellers. The change in the share is
+  what flags the EARLY phase before price fully re-prices.
+- `score_flow_rotation()` uses only these directional inputs, symmetric
+  around a 50 neutral: strong AND rising buy pressure = early accumulation
+  (high); sell pressure = below neutral. Verifed: buy-press rising →
+  ~74, sell-press → ~41.
+- **Honest data limits:** OKX/Bybit fallback tiers expose no taker-buy →
+  flow is None and the component is excluded (weights renormalized), never
+  fabricated. Backfill is technical-only and likewise has no flow.
+
+**Status: NOT YET VALIDATED** — same as the rest of the v3 trend score.
+The directional-flow component still needs the walk-forward IC test once
+point-in-time history accumulates under it. Volume and flow remain two
+separate drivers (participation 28% / flow_rotation 28%) — deliberately
+NOT merged, so the model is sensitive to the early phase (who is pressing
+in) without discarding activity information.
+
+
 

@@ -1,25 +1,204 @@
 {
-  "run_id": "bt_1788011324",
-  "started_at": "2026-08-29T13:48:44.824258+00:00",
+  "run_id": "bt_1788080654",
+  "started_at": "2026-08-30T09:04:14.565470+00:00",
   "config": {
     "horizon_days": 7,
     "min_days_for_validity": 60
   },
-  "sufficient_sample": false,
-  "sample_days": 0,
-  "sample_note": "only 0/60 days on record; day-count alone is not enough.",
+  "sufficient_sample": true,
+  "sample_days": 276,
+  "sample_note": "276 days and 3 known regimes (\u226530 samples each) \u2014 meets both bars.",
   "gates": {
-    "days_ok": false,
-    "regimes_ok": false,
-    "known_regimes": {}
+    "days_ok": true,
+    "regimes_ok": true,
+    "known_regimes": {
+      "SIDEWAYS": 6262,
+      "BULL_TREND": 1794,
+      "RISK_OFF": 1368
+    }
   },
-  "walk_forward_folds": [],
+  "walk_forward_folds": [
+    {
+      "train_days": 20,
+      "test_days": 85,
+      "test_range": [
+        "2025-11-20",
+        "2026-02-12"
+      ],
+      "n_rows": 7162,
+      "n_with_forward_return": 7162,
+      "horizon_days": 7,
+      "trend_score_vs_forward_return": {
+        "spearman": -0.034,
+        "hit_rate_60plus": {
+          "precision": 0.328,
+          "recall": 0.053,
+          "predicted_positive": 411,
+          "actual_positive": 2552,
+          "true_positive": 135,
+          "n": 7162
+        },
+        "hit_rate_below_40": {
+          "precision": 0.643,
+          "recall": 0.726,
+          "predicted_positive": 5200,
+          "actual_positive": 4610,
+          "true_positive": 3345,
+          "n": 7162
+        }
+      },
+      "entry_grade_vs_forward_return": null,
+      "entry_grade_note": "no rows carried an entry_timing grade in this window",
+      "by_regime": {
+        "UNKNOWN": {
+          "n": 7162,
+          "spearman": -0.034
+        }
+      }
+    },
+    {
+      "train_days": 105,
+      "test_days": 85,
+      "test_range": [
+        "2026-02-13",
+        "2026-05-08"
+      ],
+      "n_rows": 7158,
+      "n_with_forward_return": 7151,
+      "horizon_days": 7,
+      "trend_score_vs_forward_return": {
+        "spearman": -0.115,
+        "hit_rate_60plus": {
+          "precision": 0.418,
+          "recall": 0.114,
+          "predicted_positive": 968,
+          "actual_positive": 3560,
+          "true_positive": 405,
+          "n": 7151
+        },
+        "hit_rate_below_40": {
+          "precision": 0.469,
+          "recall": 0.523,
+          "predicted_positive": 4004,
+          "actual_positive": 3591,
+          "true_positive": 1878,
+          "n": 7151
+        }
+      },
+      "entry_grade_vs_forward_return": null,
+      "entry_grade_note": "no rows carried an entry_timing grade in this window",
+      "by_regime": {
+        "UNKNOWN": {
+          "n": 7151,
+          "spearman": -0.115
+        }
+      }
+    },
+    {
+      "train_days": 190,
+      "test_days": 85,
+      "test_range": [
+        "2026-05-09",
+        "2026-08-29"
+      ],
+      "n_rows": 15522,
+      "n_with_forward_return": 10708,
+      "horizon_days": 7,
+      "trend_score_vs_forward_return": {
+        "spearman": -0.107,
+        "hit_rate_60plus": {
+          "precision": 0.32,
+          "recall": 0.157,
+          "predicted_positive": 1749,
+          "actual_positive": 3574,
+          "true_positive": 560,
+          "n": 10708
+        },
+        "hit_rate_below_40": {
+          "precision": 0.678,
+          "recall": 0.53,
+          "predicted_positive": 5582,
+          "actual_positive": 7134,
+          "true_positive": 3783,
+          "n": 10708
+        }
+      },
+      "entry_grade_vs_forward_return": {
+        "precision": 0.333,
+        "recall": 0.037,
+        "predicted_positive": 276,
+        "actual_positive": 2501,
+        "true_positive": 92,
+        "n": 6513
+      },
+      "by_regime": {
+        "UNKNOWN": {
+          "n": 1284,
+          "spearman": -0.394
+        },
+        "SIDEWAYS": {
+          "n": 6262,
+          "spearman": -0.071
+        },
+        "BULL_TREND": {
+          "n": 1794,
+          "spearman": 0.004
+        },
+        "RISK_OFF": {
+          "n": 1368,
+          "spearman": -0.014
+        }
+      }
+    }
+  ],
   "overall_dry_run_preview": {
-    "n_rows": 0,
-    "n_with_forward_return": 0,
+    "n_rows": 31910,
+    "n_with_forward_return": 26681,
     "horizon_days": 7,
-    "entry_grade_vs_forward_return": null,
-    "entry_grade_note": "no rows carried an entry_timing grade in this window",
-    "by_regime": {}
+    "trend_score_vs_forward_return": {
+      "spearman": -0.055,
+      "hit_rate_60plus": {
+        "precision": 0.346,
+        "recall": 0.113,
+        "predicted_positive": 3302,
+        "actual_positive": 10122,
+        "true_positive": 1141,
+        "n": 26681
+      },
+      "hit_rate_below_40": {
+        "precision": 0.614,
+        "recall": 0.59,
+        "predicted_positive": 15908,
+        "actual_positive": 16559,
+        "true_positive": 9769,
+        "n": 26681
+      }
+    },
+    "entry_grade_vs_forward_return": {
+      "precision": 0.333,
+      "recall": 0.037,
+      "predicted_positive": 276,
+      "actual_positive": 2501,
+      "true_positive": 92,
+      "n": 6513
+    },
+    "by_regime": {
+      "UNKNOWN": {
+        "n": 17257,
+        "spearman": -0.079
+      },
+      "SIDEWAYS": {
+        "n": 6262,
+        "spearman": -0.071
+      },
+      "BULL_TREND": {
+        "n": 1794,
+        "spearman": 0.004
+      },
+      "RISK_OFF": {
+        "n": 1368,
+        "spearman": -0.014
+      }
+    }
   }
 }

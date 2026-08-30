@@ -58,8 +58,11 @@ def rows_to_klines(rows):
     for row in rows or []:
         try:
             # row: [ts, o, h, l, c, vol(base), volCcy(quote), volCcyQuote, confirm]
+            # taker-buy is not exposed by OKX -> None (honest: flow not
+            # available on this tier, so the flow component is excluded and
+            # weights renormalized, matching the 6-tuple contract).
             out.append((int(row[0]), float(row[2]), float(row[3]),
-                        float(row[4]), float(row[6])))
+                        float(row[4]), float(row[6]), None))
         except (TypeError, ValueError, IndexError):
             continue
     out.sort(key=lambda t: t[0])

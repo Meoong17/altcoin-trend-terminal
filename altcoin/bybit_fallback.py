@@ -39,8 +39,10 @@ def rows_to_klines(rows):
     out = []
     for row in rows or []:
         try:
+            # taker-buy not exposed by Bybit -> None (honest: flow not
+            # available on this tier, so the flow component is excluded).
             out.append((int(row[0]), float(row[2]), float(row[3]),
-                        float(row[4]), float(row[6])))
+                        float(row[4]), float(row[6]), None))
         except (TypeError, ValueError, IndexError):
             continue
     out.sort(key=lambda t: t[0])

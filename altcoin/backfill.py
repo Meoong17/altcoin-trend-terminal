@@ -86,9 +86,10 @@ def parse_kline_csv_rows(rows):
             ts = _normalize_ts(row[0])
             high, low, close = float(row[2]), float(row[3]), float(row[4])
             quote_vol = float(row[7])
+            taker_buy_quote = float(row[10]) if len(row) > 10 and row[10] not in ("", "0") else None
         except (IndexError, ValueError, TypeError):
             continue
-        out.append((ts, high, low, close, quote_vol))
+        out.append((ts, high, low, close, quote_vol, taker_buy_quote))
     out.sort(key=lambda t: t[0])
     return out
 
