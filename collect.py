@@ -97,6 +97,24 @@ SYMBOL_GROUPS = {
     "rwa": ["ONDOUSDT", "POLYXUSDT", "OMUSDT"],
     "privacy": ["ZECUSDT", "DASHUSDT", "ZENUSDT"],
     "restaking": ["EIGENUSDT", "ETHFIUSDT"],
+    # ── Added 2026-08-30 (source: CoinGecko category ∩ OKX spot universe) ──
+    # Curated from CoinGecko categories (ai, depin, storage, lending-borrowing)
+    # intersected with OKX spot tradable symbols; each coin belongs to exactly
+    # one sector (self-test enforced). "compute_financialization" intentionally
+    # has NO members: its natural coins (AKT, RLC, IO, NET, GPU, AIOZ) are not
+    # listed on OKX, and RENDER/THETA already live in ai/depin — adding them
+    # here would break one-coin-one-sector.
+    "ai_compute": [
+        "ARKMUSDT", "NMRUSDT", "KITEUSDT", "AIXBTUSDT", "KAITOUSDT",
+        "GRASSUSDT", "SENTUSDT", "PROMPTUSDT", "MAGICUSDT", "SAHARAUSDT",
+        "AEONUSDT", "ALLOUSDT", "ROBOUSDT", "LPTUSDT",
+    ],
+    "depin_infra": [
+        "IOTAUSDT", "GLMUSDT", "PHAUSDT", "ZBCNUSDT", "EDGEUSDT",
+        "SPACEUSDT", "ATHUSDT", "XCHUSDT",
+    ],
+    "storage": ["STXUSDT", "STORJUSDT", "CFGUSDT"],
+    "credit": ["KMNOUSDT", "SPKUSDT", "NAVXUSDT"],
 }
 
 # symbol -> sector, for tagging coins in ANY mode (incl. TOP_N discovery)
@@ -160,16 +178,18 @@ def compute_coin_trend_score(coin_result, glf_score, repo_stress_score):
     # ── Score v2: blueprint §2.2A composite when the feature set exists ──
     feats = coin_result.get("features") or {}
 
-    # Volume / flow-rotation components (user request): make volume an
-    # explicit part of the trend score and add the inflow/outflow rotation
-    # early-trigger. Both are coin-specific (vol_ratio, vol_trend,
-    # prox_30d_high from the features), so unlike the old constant macro
-    # they DO carry cross-sectional selection information.
+    # Volume / participation vs DIRECTIONAL FLOW are conceptually distinct
+    # (volume = activity; flow = WHO presses the market and WHICH WAY).
+    # participation uses volume level/acceleration; flow_rotation uses the
+    # taker-buy share (aggressive buyers vs total volume) from the coin's
+    # directional-flow metrics. Both are coin-specific, so unlike the old
+    # constant macro they carry cross-sectional selection information.
     participation = score_participation(
         coin_result.get("vol_ratio"), coin_result.get("vol_trend"))
+    flow_m = coin_result.get("flow") or {}
     flow_rotation = score_flow_rotation(
-        coin_result.get("vol_ratio"), coin_result.get("vol_trend"),
-        feats.get("prox_30d_high") if feats else None)
+        flow_m.get("buy_share_3d"), flow_m.get("buy_share_7d"),
+        flow_m.get("flow_trend"))
 
     if any(v is not None for v in feats.values()):
         score, drivers, coverage = score_components(
@@ -460,7 +480,7 @@ def main():
               "history_days": len(dom_hist)}
 
     btc_klines = fetch_klines("BTCUSDT")
-    btc_closes = [c for _, _, _, c, _ in btc_klines] if btc_klines else None
+    btc_closes = [c for _, _, _, c, _, _ in btc_klines] if btc_klines else None
     regime = classify_regime(btc_closes, glf_score=glf_score, repo_stress=repo_score)
     prev_state, streak = regime_streak()
     regime = apply_hysteresis(regime, prev_state, streak)
