@@ -1038,7 +1038,7 @@ function cardBody(sym,c){
       </div>`;
 }
 
-let LAST=null,LAST_GEN=null,VIEW='table',SHOWN=100;
+let LAST=null,LAST_GEN=null,VIEW='cards',SHOWN=30;
 
 function render(d,force){
   // skip full re-render when payload + controls unchanged (refresh tick)
@@ -1262,7 +1262,7 @@ function render(d,force){
       box.appendChild(el);
     }
     if(entries.length>SHOWN){$('showmore').style.display='block';
-      $('showmore').textContent=`SHOW ${Math.min(100,entries.length-SHOWN)} MORE (${entries.length-SHOWN} hidden)`;}
+      $('showmore').textContent=`SHOW ${Math.min(50,entries.length-SHOWN)} MORE (${entries.length-SHOWN} hidden)`;}
   }else{
     box.style.display='none';$('tablewrap').style.display='block';
     const cols=[['#',''],['coin',''],['price',''],['24h','chg24'],['trend','trend_score'],
@@ -1305,7 +1305,7 @@ function render(d,force){
     });
     tb.innerHTML=rows;
     if(entries.length>SHOWN){$('showmore').style.display='block';
-      $('showmore').textContent=`SHOW ${Math.min(100,entries.length-SHOWN)} MORE (${entries.length-SHOWN} hidden)`;}
+      $('showmore').textContent=`SHOW ${Math.min(50,entries.length-SHOWN)} MORE (${entries.length-SHOWN} hidden)`;}
     else $('showmore').style.display='none';
   }
   LAST_GEN=gen;
@@ -1317,7 +1317,7 @@ async function load(){
     if(!r.ok)throw 0;
     const d=await r.json();
     LAST=d;
-    if(LAST_GEN===null){VIEW=Object.keys(d.coins||{}).length>40?'table':'cards';syncToggle();}
+    if(LAST_GEN===null){VIEW='cards';syncToggle();}
     if(d.generated_at!==LAST_GEN)render(d);   // no jank on unchanged refresh ticks
     $('empty').hidden=true;
   }catch(e){
@@ -1330,7 +1330,7 @@ $('vt-table').addEventListener('click',()=>{VIEW='table';syncToggle();rerender()
 $('vt-cards').addEventListener('click',()=>{VIEW='cards';syncToggle();rerender();});
 $('vt-short').addEventListener('click',()=>{VIEW='shortlist';syncToggle();rerender();});
 function syncToggle(){$('vt-table').classList.toggle('on',VIEW==='table');$('vt-cards').classList.toggle('on',VIEW==='cards');$('vt-short').classList.toggle('on',VIEW==='shortlist');}
-$('showmore').addEventListener('click',()=>{SHOWN+=100;LAST_GEN=null;LAST&&render(LAST);});
+$('showmore').addEventListener('click',()=>{SHOWN+=50;LAST_GEN=null;LAST&&render(LAST);});
 document.querySelector('.tt thead').addEventListener('click',e=>{
   const k=e.target.closest('th')?.dataset.key;
   if(k){$('sort').value=k==='news'?$('sort').value:k;if(k!=='news')rerender();}
