@@ -116,7 +116,6 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 /* ── controls ── */
 #ctrl{display:flex;align-items:center;gap:10px;margin:6px 0 16px;flex-wrap:wrap}
 .cl{color:var(--muted);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase}
-#count{margin-right:auto}
 #filter,#sort,#grp{background:var(--panel);border:1px solid var(--line);color:var(--text);
   font-family:var(--mono);font-size:12px;border-radius:var(--r-sm);padding:6px 10px;outline:none;
   transition:border-color .15s}
@@ -339,7 +338,6 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
   /* controls: filter on its own full-width row, toggles+sort wrap neatly */
   #ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 12px}
   #filter{order:10;width:100%;flex-basis:100%}
-  #count{order:1;margin-right:auto}
   #viewtg{order:3;margin-left:auto}
   #ctrl .cl{order:4}
   #sort{order:5;max-width:46%;flex:1 1 auto}
@@ -370,7 +368,7 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
 .stat .sk2{color:var(--muted);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;display:block}
 
 /* ── view toggle ── */
-#viewtg{display:flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+#viewtg{margin-left:auto;display:flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
 #viewtg button{background:var(--panel);border:none;color:var(--muted);font-family:var(--mono);
   font-size:10.5px;letter-spacing:.08em;padding:6px 12px;cursor:pointer}
 #viewtg button.on{background:rgba(83,200,236,.12);color:var(--liq)}
@@ -531,7 +529,6 @@ details.techx[open] summary::before{content:'▾ ';color:var(--liq)}
   <div id="stats"></div>
 
   <div id="ctrl">
-    <span id="count" class="cl"></span>
     <select id="grp" style="display:none"><option value="">all groups</option></select>
     <input id="filter" type="text" placeholder="filter symbol…" autocomplete="off" aria-label="Filter symbols">
     <div id="viewtg" role="group" aria-label="View">
@@ -1284,7 +1281,6 @@ function render(d,force){
     if(av==null&&bv==null)return 0; if(av==null)return 1; if(bv==null)return -1;
     return bv-av;
   });
-  $('count').textContent=entries.length+(q||gq?' / '+total:'')+' coins';
 
   // ── quick stats over the filtered set ──
   const okRows=entries.filter(([,c])=>c.status==='ok').map(([,c])=>c);
