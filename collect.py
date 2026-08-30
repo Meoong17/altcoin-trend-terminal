@@ -195,6 +195,57 @@ SECTOR_OVERRIDES = {
     "GENIUSUSDT": "meme", "CHIPUSDT": "meme", "MMTUSDT": "meme",
     # ── DePIN / compute / storage-adjacent ──
     "LTOUSDT": "depin", "VANRYUSDT": "ai", "SOLVUSDT": "defi",
+    # ══ Second pass: remaining discovery coins (verified real tokens) ══
+    # ── L1 / sovereign chains ──
+    "VICUSDT": "l1", "LUNCUSDT": "l1", "LUNAUSDT": "l1", "MOVEUSDT": "l1",
+    "DYMUSDT": "l1", "LUMIAUSDT": "l1", "CHZUSDT": "l1", "DENTUSDT": "l1",
+    "GRAMUSDT": "l1", "GASUSDT": "l1", "MITHUSDT": "l1", "IRISUSDT": "l1",
+    "DNTUSDT": "l1", "SLFUSDT": "l1", "REDUSDT": "l1", "EDUUSDT": "l1",
+    "OPENUSDT": "l1", "OPNUSDT": "l1", "PERLUSDT": "l1", "STOUSDT": "l1",
+    # ── L2 / rollups / interop ──
+    "SCRUSDT": "l2", "ALTUSDT": "l2", "ZKCUSDT": "l2", "INITUSDT": "l2",
+    "OMNIUSDT": "l2", "HEMIUSDT": "l2", "FORMUSDT": "l2",
+    # ── DeFi ──
+    "NEXOUSDT": "defi", "RUNEUSDT": "defi", "YFIUSDT": "defi", "YFIIUSDT": "defi",
+    "MDXUSDT": "defi", "BSWUSDT": "defi", "EPXUSDT": "defi", "LEVERUSDT": "defi",
+    "AUTOUSDT": "defi", "HFTUSDT": "defi", "MITOUSDT": "defi", "OGNUSDT": "defi",
+    "BIOUSDT": "defi", "AUCTIONUSDT": "defi", "REPUSDT": "defi", "METUSDT": "defi",
+    "FFUSDT": "defi", "NEWTUSDT": "defi", "WLFIUSDT": "defi", "DREPUSDT": "defi",
+    "BTSUSDT": "defi", "ANCUSDT": "defi", "BANKUSDT": "defi", "TSTUSDT": "defi",
+    "UTKUSDT": "defi", "POLSUSDT": "defi", "STMXUSDT": "defi",
+    # ── Credit / tokenized lending ──
+    "TRUUSDT": "credit", "HUMAUSDT": "credit",
+    # ── Privacy ──
+    "ZKPUSDT": "privacy", "MOBUSDT": "privacy", "DUSKUSDT": "privacy",
+    "PARTIUSDT": "privacy", "EPICUSDT": "privacy", "MFTUSDT": "privacy",
+    # ── RWA / tokenized ──
+    "POLYUSDT": "rwa", "MANTRAUSDT": "rwa", "PLUMEUSDT": "rwa",
+    # ── Storage / file ──
+    "BLZUSDT": "storage", "BTTCUSDT": "storage",
+    # ── Liquid staking / restaking ──
+    "BBUSDT": "restaking", "KERNELUSDT": "restaking", "LAYERUSDT": "restaking",
+    "WBETHUSDT": "restaking", "JTOUSDT": "restaking",
+    # ── AI / agents / data ──
+    "VANAUSDT": "ai", "KATUSDT": "ai", "CTXCUSDT": "ai", "SOPHUSDT": "ai",
+    "AUDIOUSDT": "ai", "VIBUSDT": "ai", "ACMUSDT": "ai",
+    # ── Infrastructure / oracles / naming / messaging ──
+    "SYNUSDT": "infra", "HOLOUSDT": "infra", "QNTUSDT": "infra", "IDUSDT": "infra",
+    "GPSUSDT": "infra", "GALUSDT": "infra", "MULTIUSDT": "infra",
+    "JASMYUSDT": "infra", "AMBUSDT": "infra", "SNTUSDT": "infra",
+    # ── Gaming / GameFi / NFTs ──
+    "COCOSUSDT": "gaming", "GFTUSDT": "gaming", "MCUSDT": "gaming",
+    "ERNUSDT": "gaming", "PDAUSDT": "gaming", "PLAUSDT": "gaming",
+    "LOKAUSDT": "gaming", "BEAMUSDT": "gaming", "ACEUSDT": "gaming",
+    "COMBOUSDT": "gaming", "ERAUSDT": "gaming", "DEGOUSDT": "gaming",
+    "HOOKUSDT": "gaming", "NIGHTUSDT": "gaming", "MEUSDT": "gaming",
+    "GUNUSDT": "gaming", "OGUSDT": "gaming", "TLMUSDT": "gaming",
+    "MBLUSDT": "gaming", "WCTUSDT": "gaming", "GMTUSDT": "gaming",
+    "WINUSDT": "gaming", "TNSRUSDT": "gaming",
+    # ── Meme ──
+    "PEOPLEUSDT": "meme", "ORDIUSDT": "meme", "1000SATSUSDT": "meme",
+    "BARDUSDT": "meme", "MEGAUSDT": "meme",
+    # ── DePIN / compute ──
+    "PONDUSDT": "depin",
 }
 # Hand-curated additions always win over the flat override map; merges in
 # every symbol that is not already claimed by a curated group.
@@ -374,6 +425,18 @@ def main():
             dropped = sorted(set(curated) - set(ranked))
             if dropped:
                 print(f"[Collect] Pruned (not trading on Binance): {dropped}", file=sys.stderr)
+            # Curated coins that Binance doesn't list but a fallback source
+            # (Bybit) serves are real, tradable assets (e.g. Aethir/ATH) —
+            # keep them so they surface via the Bybit fallback instead of
+            # being dropped as if they were dead cards.
+            try:
+                from altcoin.bybit_fallback import fetch_klines_bybit
+                keep = [s for s in dropped if fetch_klines_bybit(s, limit=1)]
+                if keep:
+                    print(f"[Collect] Bybit-only curated coins re-added: {keep}", file=sys.stderr)
+                    ranked = ranked + keep
+            except Exception as e:
+                print(f"[Collect] Bybit re-add check failed: {e}", file=sys.stderr)
             symbols = ranked
         if top_n:
             symbols = symbols[:top_n]
