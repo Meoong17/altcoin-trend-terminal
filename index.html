@@ -61,8 +61,13 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
 #howto-btn:hover{border-color:var(--liq);background:rgba(83,200,236,.08)}
 #howto-btn:focus-visible{outline:2px solid var(--liq);outline-offset:2px}
 
-/* ── macro strip (compact) ── */
-#macro{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0 10px}
+/* ── macro strip (compact) — hidden by default, shown via top menu bar ── */
+#macro{display:none;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0 10px}
+#macro.open{display:grid}
+#macro .mbox.mv-focus{outline:2px solid rgba(233,196,106,.45);outline-offset:2px}
+/* macro view: hide the coin UI (sidebar/stats/controls/grid) while showing the strip */
+.macrov #sidebar,.macrov #stats,.macrov #ctrl,.macrov #coins,
+.macrov #tablewrap,.macrov #showmore{display:none!important}
 .mbox{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid rgba(233,196,106,.07);
   border-radius:var(--r);padding:10px 12px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.035),var(--shadow)}
@@ -81,6 +86,24 @@ h1 .eyebrow{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.
   background:var(--panel2);color:var(--muted);transition:border-color .15s}
 .chip b{font-weight:500}
 .chip.p b{color:var(--up)} .chip.n b{color:var(--down)}
+
+/* ── top macro menu bar ── */
+#macronav{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:14px 0 6px;
+  padding:8px 10px;background:linear-gradient(180deg,var(--panel),var(--panel2));
+  border:1px solid rgba(233,196,106,.08);border-radius:var(--r);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03),var(--shadow)}
+#macronav .mn-cap{font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 4px 0 2px}
+#macronav button{font-family:var(--mono);font-size:10px;letter-spacing:.06em;padding:6px 12px;
+  border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);
+  cursor:pointer;transition:background .14s,color .14s,border-color .14s}
+#macronav button:hover{color:var(--text);border-color:var(--line2)}
+#macronav button.on{background:rgba(233,196,106,.14);color:var(--gold);border-color:rgba(233,196,106,.4)}
+#macronav button.mn-coins.on{background:rgba(83,200,236,.12);color:var(--liq);border-color:rgba(83,200,236,.35)}
+@media(max-width:720px){
+  #macronav{overflow-x:auto;flex-wrap:nowrap;padding:8px;margin:10px 0 4px;scrollbar-width:thin}
+  #macronav button{flex:none;white-space:nowrap}
+  #macronav .mn-cap{display:none}
+}
 #regime{grid-column:1/-1;display:none;align-items:baseline;gap:12px;padding:11px 16px}
 #regime-state{font-family:var(--disp);font-weight:700;font-size:14.5px;letter-spacing:.05em}
 #degraded{display:none;grid-column:1/-1;border:1px solid var(--warn);border-radius:var(--r);
@@ -316,6 +339,14 @@ footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:v
   #regime{flex-wrap:wrap;gap:8px}
   #regime-state{font-size:13px}
   .val{font-size:20px}
+  /* prevent clipped/oversized content on small screens */
+  .main{min-width:0;overflow-x:hidden}
+  .card{min-width:0;overflow-wrap:anywhere}
+  .head{flex-wrap:wrap;gap:4px}
+  .rows{min-width:0}
+  .sym small{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+  .chips{max-width:100%}
+  .chip{max-width:100%}
 }
 
 /* ── quick stats bar ── */
@@ -430,6 +461,16 @@ details.techx[open] summary::before{content:'▾ ';color:var(--liq)}
 </header>
 
 <div class="wrap">
+  <nav id="macronav" aria-label="Market views">
+    <span class="mn-cap">Market</span>
+    <button type="button" data-macro="coins" class="mn-coins on">Coins</button>
+    <button type="button" data-macro="regime">Regime</button>
+    <button type="button" data-macro="glf">Liquidity</button>
+    <button type="button" data-macro="repo">Repo Stress</button>
+    <button type="button" data-macro="asi">Altcoin Season</button>
+    <button type="button" data-macro="stbl">Stablecoin</button>
+    <button type="button" data-macro="gate">Context Gate</button>
+  </nav>
   <div class="layout">
     <aside id="sidebar" aria-label="Sector navigation">
       <div class="sb-cap">Sectors</div>
@@ -437,25 +478,25 @@ details.techx[open] summary::before{content:'▾ ';color:var(--liq)}
     </aside>
     <div class="main">
   <div id="macro">
-    <div class="mbox">
+    <div class="mbox" id="glf-box">
       <span class="lbl">SLOW SIGNAL<span class="speedtag">30-90D</span></span><br><span class="lbl" data-tip="Global Liquidity Factor 0–100: composite of central-bank balance sheets (Fed, ECB, BoJ, China M2), US M2, TGA, RRP and DXY, each as a z-score. Above 60 = liquidity tailwind for risk assets.">Global Liquidity Factor</span><i class="info-icon" data-tip="Global Liquidity Factor 0–100: composite of central-bank balance sheets (Fed, ECB, BoJ, China M2), US M2, TGA, RRP and DXY, each as a z-score. Above 60 = liquidity tailwind for risk assets." role="button" tabindex="0" aria-label="How this works">i</i>
       <div class="vrow2"><div class="val" id="glf">—</div><span class="tag" id="glf-regime"></span></div>
       <div class="band"><i id="glf-pin" style="left:50%"></i></div>
       <div class="chips" id="glf-chips"></div>
     </div>
-    <div class="mbox">
+    <div class="mbox" id="repo-box">
       <span class="lbl" data-tip="SOFR minus EFFR spread, scored 0–1. When banks pay a premium for secured overnight funding, dollar plumbing is under stress — historically bad for crypto liquidity. Below 0.35 is calm.">Repo Stress · SOFR−EFFR</span><i class="info-icon" data-tip="SOFR minus EFFR spread, scored 0–1. When banks pay a premium for secured overnight funding, dollar plumbing is under stress — historically bad for crypto liquidity. Below 0.35 is calm." role="button" tabindex="0" aria-label="How this works">i</i>
       <div class="vrow2"><div class="val" id="repo">—</div><span class="tag" id="repo-label"></span></div>
       <div class="band inv"><i id="repo-pin" style="left:50%"></i></div>
       <div class="chips" id="repo-chips"></div>
     </div>
-    <div class="mbox">
+    <div class="mbox" id="asi-box">
       <span class="lbl" data-tip="% of tracked coins whose 90-day return beats BTC's. 75+ = altcoin season (breadth of outperformance), 25 and below = bitcoin season. Computed over this terminal's universe, not CMC top-50.">Altcoin Season Index</span><i class="info-icon" data-tip="% of tracked coins whose 90-day return beats BTC's. 75+ = altcoin season (breadth of outperformance), 25 and below = bitcoin season. Computed over this terminal's universe, not CMC top-50." role="button" tabindex="0" aria-label="How this works">i</i>
       <div class="vrow2"><div class="val" id="asi">—</div><span class="tag" id="asi-label"></span></div>
       <div class="band season"><i id="asi-pin" style="left:50%"></i></div>
       <div class="chips"><span class="chip" id="asi-sample"></span></div>
     </div>
-    <div class="mbox">
+    <div class="mbox" id="stbl-box">
       <span class="lbl" data-tip="Total stablecoin float (DeFiLlama, all chains): 30d growth 65% + 7d impulse 35%. Rising float = dry powder entering crypto. Net-flow & exchange-reserve legs need paid data and are excluded, never faked.">Stablecoin Liquidity</span><i class="info-icon" data-tip="Total stablecoin float (DeFiLlama, all chains): 30d growth 65% + 7d impulse 35%. Rising float = dry powder entering crypto. Net-flow & exchange-reserve legs need paid data and are excluded, never faked." role="button" tabindex="0" aria-label="How this works">i</i>
       <div class="vrow2"><div class="val" id="stbl">—</div><span class="tag" id="stbl-tag"></span></div>
       <div class="band"><i id="stbl-pin" style="left:50%"></i></div>
@@ -1398,6 +1439,28 @@ $('sectorlist').addEventListener('click',e=>{
 });
 $('sectorlist').addEventListener('keydown',e=>{
   if(e.key==='Enter'||e.key===' '){const p=e.target.closest('.sec-item');if(p){e.preventDefault();p.click();}}
+});
+
+// ── top macro menu bar: switch between coin list and a macro view ──
+const MACRO_TARGET={regime:'regime',glf:'glf-box',repo:'repo-box',asi:'asi-box',stbl:'stbl-box',gate:'gate-box'};
+function showMacroView(key){
+  const wrap=document.querySelector('.wrap');
+  const macro=$('macro');
+  macro.querySelectorAll('.mbox').forEach(m=>m.classList.remove('mv-focus'));
+  if(key==='coins'){
+    wrap.classList.remove('macrov');
+    macro.classList.remove('open');
+    return;
+  }
+  wrap.classList.add('macrov');
+  macro.classList.add('open');
+  const t=document.getElementById(MACRO_TARGET[key]);
+  if(t){t.classList.add('mv-focus'); t.scrollIntoView({behavior:'smooth',block:'nearest'});}
+}
+$('macronav').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b||!b.dataset.macro)return;
+  $('macronav').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  showMacroView(b.dataset.macro);
 });
 
 /* how-to-read drawer */
