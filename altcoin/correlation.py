@@ -18,7 +18,23 @@ from itertools import combinations
 
 
 def daily_returns(closes):
-    return [closes[i] / closes[i - 1] - 1 for i in range(1, len(closes))]
+    """Daily simple returns, skipping any non-positive price.
+
+    A 0.0 close (CoinStats fallback charts return 0 for missing days) used to
+    raise ZeroDivisionError here and kill the WHOLE collection cycle. A zero
+    price is not a real observation, so the return spanning it is dropped
+    rather than guessed.
+    """
+    out = []
+    prev = None
+    for c in closes or []:
+        if c is None or c <= 0:
+            prev = None          # break the chain: never divide across a gap
+            continue
+        if prev is not None:
+            out.append(c / prev - 1)
+        prev = c
+    return out
 
 
 def pearson(a, b):

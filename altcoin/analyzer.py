@@ -516,8 +516,11 @@ def fetch_klines(symbol, interval="1d", limit=100):
         )
         r.raise_for_status()
         klines = r.json()
+        # A non-positive close is not an observation: every return/ratio
+        # series downstream divides by it (ZeroDivisionError). Drop such
+        # candles at the source tier instead of poisoning the cycle.
         return [(int(k[0]), float(k[2]), float(k[3]), float(k[4]), float(k[7]),
-                 float(k[10])) for k in klines]
+                 float(k[10])) for k in klines if float(k[4]) > 0]
     except (requests.RequestException, ValueError, KeyError, IndexError) as e:
         print(f"[Analyzer] {symbol} kline fetch failed: {e}", file=sys.stderr)
         return None

@@ -101,6 +101,11 @@ def chart_to_daily(rows, days=30):
             ts, usd, btc = int(row[0]), float(row[1]), float(row[2])
         except (TypeError, ValueError, IndexError):
             continue
+        if usd <= 0:
+            # Chart API returns 0 for a missing/illiquid day. A zero price is
+            # not an observation: keeping it poisoned every return series
+            # downstream (ZeroDivisionError) — drop the day instead.
+            continue
         eth = None
         try:
             eth = float(row[3])
@@ -186,6 +191,10 @@ def analyze_coins_fallback(symbols, compute_rvm, compute_rsi):
     for cid, (symbol, vol24) in wanted.items():
         closes, btc_ratios, eth_ratios = chart_to_daily(charts.get(cid))
         if len(closes) < 8:
+            continue
+        if any(c is None or c <= 0 for c in closes):
+            print(f"[coinstats] {symbol}: non-positive close in chart, skipped",
+                  file=sys.stderr)
             continue
         rvm = compute_rvm(closes)
         ratio_rvm = compute_rvm(btc_ratios) if len(btc_ratios) >= 8 else None

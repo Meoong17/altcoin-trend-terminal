@@ -41,8 +41,11 @@ def rows_to_klines(rows):
         try:
             # taker-buy not exposed by Bybit -> None (honest: flow not
             # available on this tier, so the flow component is excluded).
+            close = float(row[4])
+            if close <= 0:
+                continue          # 0/negative close is not an observation
             out.append((int(row[0]), float(row[2]), float(row[3]),
-                        float(row[4]), float(row[6]), None))
+                        close, float(row[6]), None))
         except (TypeError, ValueError, IndexError):
             continue
     out.sort(key=lambda t: t[0])

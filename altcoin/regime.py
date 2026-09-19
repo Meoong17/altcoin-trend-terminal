@@ -33,8 +33,20 @@ STATES = ["BULL_TREND", "BEAR_TREND", "SIDEWAYS", "RISK_OFF", "CAPITULATION_RECO
 
 
 def realized_vol_series(closes, window=14):
-    """Rolling annualization-free stdev of daily returns."""
-    rets = [closes[i] / closes[i - 1] - 1 for i in range(1, len(closes))]
+    """Rolling annualization-free stdev of daily returns.
+
+    Non-positive prices (a 0.0 close from a fallback data source) are skipped
+    instead of divided by — same guard as correlation.daily_returns.
+    """
+    rets = []
+    prev = None
+    for c in closes or []:
+        if c is None or c <= 0:
+            prev = None
+            continue
+        if prev is not None:
+            rets.append(c / prev - 1)
+        prev = c
     out = []
     for i in range(window, len(rets) + 1):
         w = rets[i - window:i]
