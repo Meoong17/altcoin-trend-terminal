@@ -67,6 +67,26 @@ DEFI_PROTOCOLS = {
     # a wrong slug logs + skips, the coin keeps its technical score)
     "LINKUSDT": "chainlink",
     "PYTHUSDT": "pyth-network",
+    # Coverage expansion (2026-09-23): every slug below was VERIFIED live
+    # before being added (GET /protocol/{slug} -> 200 with non-trivial TVL,
+    # plus /summary/fees/{slug} -> 30d fees/revenue), because a wrong slug
+    # silently produces a coin with no fundamentals while still looking
+    # "tracked" in the universe. Rejected in the same pass and deliberately
+    # NOT added: ether-fi and linea (both HTTP 400 — wrong/renamed slug),
+    # pudgy-penguins (TVL ~0, not a DeFi protocol), resolv (TVL 14M but
+    # fees_30d = 0 and revenue = 0 — a TVL-only "score" is not value accrual).
+    # The point of the expansion is the PENDING value test in
+    # docs/VALIDATION.md: it needs point-in-time fundamental rows, and the
+    # panel was only 16 coins — 8 more verified protocols roughly double the
+    # cross-section the test can rank.
+    "AEROUSDT": "aerodrome",       # fees30 17.5M, rev30 14.2M, holders30 14.2M
+    "EIGENUSDT": "eigenlayer",     # TVL 7.2B; rev30 0 (partial legs only)
+    "SUSHIUSDT": "sushiswap",      # fees30 45k, rev30 7.5k, holders30 7.5k
+    "YFIUSDT": "yearn-finance",    # fees30 590k, rev30 32k, holders30 29k
+    "CVXUSDT": "convex-finance",   # fees30 2.4M, rev30 950k, holders30 944k
+    "FXSUSDT": "frax",             # fees30 10k, rev30 806 (small but real)
+    "1INCHUSDT": "1inch",          # fees30 53k, rev30 10k, holders30 0
+    "SPKUSDT": "spark",            # fees30 13.4M, rev30 92k, holders30 1.1M
 }
 
 WEIGHTS = {"tvl": 0.20, "revenue": 0.20, "fee_growth": 0.15, "value_accrual": 0.20}
