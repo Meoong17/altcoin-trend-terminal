@@ -278,6 +278,95 @@ so it is not re-discovered as "new" next month.
    (conservative backtest pollution, not a live leak), consistent with the
    earlier bStocks cleanup.
 
+## Rankability guard (2026-09-23) — stop ranking non-comparable rows
+
+The live list compared numbers produced by different formulas from data of
+different completeness: GRASS 86.1 (current formula, coverage 0.72, priced via
+the OKX fallback, no flow_rotation) sorted against MARSCOINUSDT 81.81 (v1-legacy
+blend, zero v3 drivers, no coverage field at all) as if both meant the same
+thing. Implemented `assess_rankability()` in `altcoin/features.py`, stamped onto
+every coin by `collect.py` (`rankable`, `data_quality`, `rank_note`) with a
+per-cycle summary in `data.json.rankability`.
+
+A row is NOT RANKABLE when any of:
+- `version != SCORE_VERSION` → `legacy-formula` (different math entirely);
+- `coverage.weight_covered < RANK_MIN_COVERAGE` (0.70) → `low-coverage`
+  (too much weight was renormalized away);
+- priced by a fallback tier while Binance serves ≥50% of the universe →
+  `degraded-source` (volume/flow inputs degraded).
+
+The source rule deliberately does NOT apply when the whole universe is on
+fallback tiers (`binance_share < 0.5`): in that case Binance itself is
+unreachable and the degradation is a property of the cycle's data mode, not of
+the coin — otherwise an ISP block would empty the ranking while still showing
+409 coins.
+
+UI: NOT RANKABLE rows stay visible with an explicit chip (card + table) and
+sort BELOW the rankable set in every sort mode; they are excluded from the
+SHORTLIST view; the stats strip shows `rankable coins N/total` with a tooltip
+breaking down the qualities. No weight, formula or score value changed.
+
+## Audit extensions: multi-horizon, quantile spread, path metrics (2026-09-23)
+
+`analysis/model_audit.py` now also reports (a) IC at horizons 1/3/7/14/30, (b)
+per-date quantile long-short spread, (c) PATH metrics — MFE, MAE, days-to-each,
+and P(+5% printed before −5%). Rationale: a single horizon-7 mean IC cannot tell
+"cannot pick winners" from "usefully avoids losers", and a terminal return hides
+whether a setup was ever tradable.
+
+Multi-horizon IC (mean / frac>0 / days):
+
+| target | h=1 | h=3 | h=7 | h=14 | h=30 |
+|--------|-----|-----|-----|------|------|
+| trend_score | −0.016/0.46/260 | −0.007/0.51/258 | −0.023/0.44/254 | −0.045/0.36/247 | −0.059/0.36/231 |
+| rel_strength | −0.006/0.50/260 | +0.011/0.53/258 | −0.001/0.47/254 | −0.020/0.41/247 | −0.043/0.41/231 |
+| otf | +0.004/0.49/41 | +0.045/0.59/39 | +0.063/0.63/35 | +0.065/0.68/28 | −0.049/0.25/12 |
+| vaf | +0.043/0.62/48 | +0.117/0.63/46 | +0.220/0.81/42 | +0.259/0.80/35 | +0.245/1.00/19 |
+| flow_rotation | +0.018/0.59/17 | +0.059/0.80/15 | +0.106/1.00/11 | +0.028/0.75/4 | n/a |
+| participation | −0.004/0.41/17 | +0.057/0.80/15 | +0.064/0.73/11 | −0.133/0.00/4 | n/a |
+| confirmation | +0.048/0.59/17 | +0.143/0.80/15 | +0.253/1.00/11 | +0.223/1.00/4 | n/a |
+
+Quantile long-short at h=7 (top-decile / top-quintile / bottom-quintile mean
+forward return, per-date cross-section, equal weight per day):
+
+| target | top10% | top20% | bot20% | spread | t | days spread>0 |
+|--------|--------|--------|--------|--------|---|---------------|
+| trend_score | −0.0215 | −0.0156 | −0.0145 | **−0.0011** | −0.36 | 0.496 |
+| rel_strength | −0.0127 | −0.0113 | −0.0135 | +0.0022 | 0.79 | 0.512 |
+| participation | +0.0603 | +0.0780 | +0.0450 | +0.0331 | 3.86 | 0.909 |
+| otf | +0.0495 | +0.0571 | +0.0346 | +0.0225 | 2.77 | 0.657 |
+| flow_rotation | +0.0819 | +0.0925 | +0.0654 | +0.0271 | 2.14 | 0.727 |
+| confirmation | +0.0995 | +0.0982 | +0.0372 | +0.0610 | 9.31 | 1.000 |
+| vaf | +0.1091 | +0.1192 | +0.0322 | **+0.0869** | 4.38 | 0.786 |
+
+Path metrics (median over pooled rows; `R:R` = medMFE / |medMAE|):
+
+| h | target | bucket | n | medMFE | medMAE | R:R | P(+5% before −5%) |
+|---|--------|--------|---|--------|--------|-----|-------------------|
+| 7 | trend_score | top20 | 6904 | +0.032 | −0.050 | 0.63 | 0.441 |
+| 7 | trend_score | bot20 | 6904 | +0.012 | −0.026 | 0.44 | 0.439 |
+| 7 | vaf | top20 | 126 | +0.090 | −0.032 | 2.83 | 0.617 |
+| 7 | vaf | bot20 | 126 | +0.043 | −0.035 | 1.22 | 0.538 |
+| 7 | otf | top20 | 2655 | +0.048 | −0.030 | 1.61 | 0.539 |
+| 14 | vaf | top20 | 105 | +0.141 | −0.053 | 2.63 | 0.590 |
+
+What this settles:
+1. **trend_score fails every framing, not just mean IC.** Its top-minus-bottom
+   quantile spread is −0.0011 (t=−0.36, positive on 49.6% of days) — literally
+   zero — and its path profile is indistinguishable between the top and bottom
+   quintile (P(+5% before −5%) 0.441 vs 0.439). It is not a hidden
+   "avoid-the-losers" tool either: IC gets MORE negative at h=14/30
+   (−0.045/−0.059, frac 0.36), consistent with chasing extended coins
+   underperforming — useful only as a de-risking note, not a signal.
+2. **VaF is the only metric positive in every framing**: IC positive at every
+   horizon (best +0.259 at h=14), quantile spread +8.7pp per 7 days
+   (t=4.38, positive on 79% of days), path R:R 2.83 vs 1.22 for the bottom
+   quintile. Still n=35–48 days, one era, 24 coins — **the pending ≥60-day test
+   remains the gate**; these numbers say "worth finishing the test", not "edge".
+3. The v3 components (flow_rotation / participation / confirmation) remain
+   n=11–17 days; participation already flips to −0.133 at h=14 (n=4), which is
+   exactly why no weight is being changed on this sample.
+
 ## Re-run checklist
 
 - `PYTHONPATH=. .venv/bin/python analysis/model_audit.py --json /tmp/audit.json`
