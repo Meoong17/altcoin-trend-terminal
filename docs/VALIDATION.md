@@ -367,6 +367,44 @@ What this settles:
    n=11–17 days; participation already flips to −0.133 at h=14 (n=4), which is
    exactly why no weight is being changed on this sample.
 
+## Parallel v4 experiment — recorded, NOT adopted (2026-09-23)
+
+The same external review proposed replacing the trend score with an
+acceleration/transition layer and decoupling entry quality from the trend score.
+Both are hypotheses, and nothing may be adopted on the v3 sample (n=11–17 days),
+so instead of adopting them the collector now RECORDS them each cycle:
+
+- `altcoin/experimental.py` → `score_experimental(closes, quote_volumes, flow,
+  feats, ta)`, attached by `analyze_coin` as `experimental`, tagged
+  `EXP_VERSION` (hash of the a-priori constants, so a stored row's formula stays
+  attributable — the SCORE_VERSION lesson).
+- Candidates (all 0–100, `None` when inputs are missing, never a fabricated 0):
+  `accel_price` (3d pace vs the average 3d pace of the 7d window), `accel_vol`
+  (3d vs 10d mean volume), `accel_flow` (buy_share_3d / buy_share_7d − 1),
+  `transition` (do the available accelerations agree in sign),
+  `entry_decoupled` (extension vs MA20 + 30d range position + reward:risk to 30d
+  resistance/support — computed WITHOUT touching `trend_score`), and
+  `v4_equal` (equal-weight mean of the above: an explicitly UNFITTED baseline
+  with zero fitted degrees of freedom).
+- Every constant is fixed a priori and hashed; the raw inputs (`ret_3d`,
+  `ret_7d`, `prox_30d_high`, `rr_30d`, …) are stored alongside the scores so the
+  mapping can be re-derived without re-fetching anything.
+- **They are read by NOTHING**: no ranking, sort, grade, alert or dashboard
+  element consumes them. `analysis/model_audit.py` now scores them with the SAME
+  machinery as the live targets (IC at 1/3/7/14/30d, quantile spread, path
+  metrics) so the comparison is apples-to-apples on identical point-in-time rows.
+- A coin on a fallback tier loses exactly `accel_flow` (no taker-buy field) and
+  reports coverage 5/6 — the missing input stays `None` rather than silently
+  entering the equal-weight mean as a zero.
+
+Status after the first cycle: 409/409 coins carry the block, 403 have
+`accel_flow`, and the history rows persist it (`v4exp-2c2881`). With one cycle
+recorded there is no IC/path evidence yet, by construction — the value of this
+change is that the sample starts accruing now instead of after a rewrite.
+First-cycle cross-sectional medians (descriptive only, NOT evidence):
+accel_price 44.4, accel_vol 63.0, accel_flow 49.7, transition 66.7,
+entry_decoupled 46.8, v4_equal 51.5.
+
 ## Re-run checklist
 
 - `PYTHONPATH=. .venv/bin/python analysis/model_audit.py --json /tmp/audit.json`

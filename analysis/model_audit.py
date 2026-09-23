@@ -46,6 +46,7 @@ def load():
         et = p.get("entry_timing") or {}
         vaf = p.get("vaf") or {}
         recon = p.get("market_regime_reconstructed") or {}
+        exp = ((p.get("experimental") or {}).get("candidates") or {})
         snaps[(symbol, date)] = {
             "price": p.get("latest_price"),
             "trend_score": p.get("trend_score"),
@@ -58,6 +59,7 @@ def load():
             "otf": et.get("otf"),
             "grade": et.get("grade"),
             "vaf": vaf.get("vaf"),
+            "exp": exp,
             "fees30": ((p.get("fundamental_raw") or {}).get("fees_30d")),
         }
         dates.add(date)
@@ -222,6 +224,11 @@ def main():
         targets.append((k, (lambda kk: (lambda s: s["comps"].get(kk)))(k)))
     targets += [("otf", lambda s: s["otf"]), ("vaf", lambda s: s["vaf"]),
                 ("grade_rank", lambda s: {"A+": 4, "A": 3, "B": 2, "Avoid": 1}.get(s["grade"]))]
+    # Parallel v4 candidates (not adopted — recorded for comparison).
+    for k in ("accel_price", "accel_vol", "accel_flow", "transition",
+              "entry_decoupled", "v4_equal"):
+        targets.append(("exp_" + k,
+                        (lambda kk: (lambda s: (s.get("exp") or {}).get(kk)))(k)))
 
     report = {"horizon": a.horizon, "dates": [dates[0], dates[-1]],
               "rows": len(fr), "targets": {}}
@@ -313,6 +320,12 @@ def main():
                     ("rel_strength", lambda s: s["comps"].get("rel_strength")),
                     ("otf", lambda s: s["otf"]),
                     ("vaf", lambda s: s["vaf"])]
+    # Parallel v4 candidates (altcoin/experimental.py): recorded by the
+    # collector precisely so they get the SAME test as the live scores on the
+    # same rows. They are not adopted — this is the evidence that would decide.
+    main_targets += [("exp_" + k, (lambda kk: (lambda s: (s.get("exp") or {}).get(kk)))(k))
+                     for k in ("accel_price", "accel_vol", "accel_flow",
+                               "transition", "entry_decoupled", "v4_equal")]
 
     print("\n=== MULTI-HORIZON CROSS-SECTIONAL IC (mean / frac>0 / days) ===")
     print(f"{'target':16} " + " ".join(f"{('h=%d' % h):>18}" for h in HORIZONS))

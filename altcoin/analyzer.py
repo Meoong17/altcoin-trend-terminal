@@ -672,6 +672,13 @@ def analyze_coin(symbol, btc_closes=None, klines=None, eth_closes=None):
     outperforms = (ret_90d > btc_ret_90d
                    if ret_90d is not None and btc_ret_90d is not None else None)
 
+    ta = _compute_technical_analysis(closes, highs, lows, quote_volumes, rsi)
+    # Parallel v4 candidates (altcoin/experimental.py): recorded so the audit
+    # machinery can compare them against trend_score/otf/vaf on identical
+    # point-in-time rows later. Nothing reads them for ranking or grading.
+    from altcoin.experimental import score_experimental
+    experimental = score_experimental(closes, quote_volumes, flow, feats, ta)
+
     result = {
         "symbol": symbol,
         "status": "ok",
@@ -685,7 +692,8 @@ def analyze_coin(symbol, btc_closes=None, klines=None, eth_closes=None):
         "features": feats,
         "volumes_30d": [round(v, 0) for v in quote_volumes[:-1]][-30:],
         "flow": flow,
-        "ta": _compute_technical_analysis(closes, highs, lows, quote_volumes, rsi),
+        "ta": ta,
+        "experimental": experimental,
         **(rvm or {}),
         **(vol or {}),
     }
@@ -1362,6 +1370,49 @@ if __name__ == "__main__":
         "a fallback-only cycle must not empty the ranking"
     print("\u2705 PASS: rankability \u2014 legacy / low-coverage / degraded-source flagged, "
           "fallback-only cycle stays rankable\n")
+
+    # Parallel v4 candidates (altcoin/experimental.py) — recorded only, but the
+    # numbers must still be honest: an accelerating series must score above 50
+    # and a decelerating one below, and a missing input must stay None rather
+    # than become a silent 0 that later reads as "measured, and negative".
+    from altcoin.experimental import score_experimental, EXP_VERSION
+
+    def _ser(rates):
+        px = [100.0]
+        for r in rates:
+            px.append(px[-1] * (1.0 + r))
+        return px
+
+    # A constant growth RATE is zero acceleration by construction (3d pace ==
+    # the 7d average pace), so the fixtures must STEEPEN or FLATTEN explicitly.
+    _acc = _ser([0.0] * 22 + [0.01] * 3 + [0.03] * 5)
+    _dec = _ser([0.0] * 22 + [0.03] * 3 + [0.01] * 5)
+    _vup = _ser([0.0] * 22 + [0.02] * 3 + [0.15] * 5)
+    # Volume deceleration needs the RECENT bars below the 10-day mean, so the
+    # fixture must decay after a spike (a merely slower rise still sits above a
+    # mean that includes flat bars).
+    _vdn = _ser([0.0] * 22 + [0.20] * 3 + [-0.15] * 5)
+    _ta = {"ma20": 100.0, "support": {"30d": 90.0}, "resistance": {"30d": 130.0}}
+    _feats = {"prox_30d_high": 0.6}
+    up = score_experimental(_acc, _vup, {"flow_trend": 1.2}, _feats, _ta)
+    dn = score_experimental(_dec, _vdn, {"flow_trend": 0.8}, _feats, _ta)
+    assert up["candidates"]["accel_price"] > 50 > dn["candidates"]["accel_price"], \
+        "acceleration must map an accelerating series above 50 and a falling one below"
+    assert up["candidates"]["accel_vol"] > 50 > dn["candidates"]["accel_vol"]
+    assert up["candidates"]["accel_flow"] > 50 > dn["candidates"]["accel_flow"]
+    assert up["candidates"]["transition"] == 100.0
+    assert dn["candidates"]["transition"] == 0.0
+    assert up["candidates"]["v4_equal"] is not None
+    assert up["version"] == EXP_VERSION and up["coverage"]["weight_covered"] == 1.0
+    noflow = score_experimental(_acc, _vup, None, _feats, _ta)
+    assert noflow["candidates"]["accel_flow"] is None
+    assert noflow["coverage"]["used"] == 5, \
+        "a coin without a taker-buy field must lose exactly one candidate"
+    thin = score_experimental([100.0, 101.0], [], None, {}, {})
+    assert thin["candidates"]["v4_equal"] is None and thin["coverage"]["used"] == 0, \
+        "insufficient history must yield None, never a fabricated score"
+    print("\u2705 PASS: experimental v4 candidates \u2014 accelerating>decelerating, "
+          "missing inputs stay None\n")
 
     # Correlation / concentration warning (review fix #3: portfolio correlation)
     from altcoin.correlation import correlation_matrix, concentration_warning, pearson
