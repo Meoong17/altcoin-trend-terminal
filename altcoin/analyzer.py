@@ -399,6 +399,12 @@ _BSTOCKS_BASES = {
     # Meta (METAB), DJT / Trump Media (DJTB), AMD (AMDB) — confirmed
     # tokenized equities observed in the live universe
     "SKHYB", "AAOIB", "LITEB", "METAB", "DJTB", "AMDB",
+    # ARM (Arm Holdings) + BNC — user-confirmed tokenized equities
+    # (2026-09-23). ARMB had already fallen out of the volume-ranked
+    # universe; BNCB was still live with ~$7.7M 24h volume and would
+    # otherwise have been scored as a crypto asset. Both are excluded
+    # explicitly (never by pattern: genuine alts end in "B").
+    "ARMB", "BNCB",
 }
 
 

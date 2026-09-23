@@ -266,14 +266,17 @@ so it is not re-discovered as "new" next month.
    fee/revenue legs). Rejected in the same pass: `ether-fi` and `linea`
    (HTTP 400), `pudgy-penguins` (TVL ~0), `resolv` (fees_30d = revenue_30d = 0
    — a TVL-only "score" is not value accrual). Panel now 24 coins/day.
-4. **Open item needing a human decision — bStock-like tickers.**
-   `_looks_like_unlisted_bstock()` (warning-only, by design) flags
-   **ARMBUSDT** and **BNCBUSDT**. `ARMB` has already dropped out of the
-   volume-ranked universe; `BNCBUSDT` is still live (~$7.7M 24h volume) and
-   would be scored as if it were crypto. `MARSCOINUSDT` is a real memecoin,
-   not a tokenized equity. Confirm whether ARMB/BNCB are Binance tokenized
-   US equities before either is added to `_BSTOCKS_BASES` — the denylist must
-   never be pattern-extended (genuine alts end in "B": ARB, BNB, SHIB, TRB).
+4. **bStock-like tickers — RESOLVED (2026-09-23, user-confirmed).**
+   `_looks_like_unlisted_bstock()` (warning-only, by design) flagged
+   **ARMBUSDT** and **BNCBUSDT**. The user confirmed both ARE Binance
+   tokenized US equities, so both bases were added explicitly to
+   `_BSTOCKS_BASES` (never by pattern — genuine alts end in "B": ARB, BNB,
+   SHIB, TRB are all still kept, verified). `ARMBUSDT` had already dropped
+   out of the volume-ranked universe; `BNCBUSDT` was still live (~$7.7M 24h
+   volume) and is now excluded. `MARSCOINUSDT` is a real memecoin, not a
+   tokenized equity. Pre-existing `history.db` rows for both are kept
+   (conservative backtest pollution, not a live leak), consistent with the
+   earlier bStocks cleanup.
 
 ## Re-run checklist
 
