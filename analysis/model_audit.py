@@ -299,10 +299,210 @@ def main():
         print(f"  {k:38} {v:+.3f}")
     report["redundancy"] = red
 
+    # ── EXTENSIONS (2026-09-23 external review, item 2) ────────────────
+    # (a) multi-horizon IC, (b) quantile / long-short spread, (c) PATH
+    # metrics (MFE/MAE/up-before-down). A single horizon-7 mean IC cannot
+    # distinguish "cannot pick winners" from "usefully avoids losers", and
+    # a terminal forward return hides whether a setup was ever tradable
+    # (a +15% 7d return that first went -8% is not the same trade signal as
+    # one that never drew down).
+    main_targets = [("trend_score", lambda s: s["trend_score"]),
+                    ("flow_rotation", lambda s: s["comps"].get("flow_rotation")),
+                    ("participation", lambda s: s["comps"].get("participation")),
+                    ("confirmation", lambda s: s["comps"].get("confirmation")),
+                    ("rel_strength", lambda s: s["comps"].get("rel_strength")),
+                    ("otf", lambda s: s["otf"]),
+                    ("vaf", lambda s: s["vaf"])]
+
+    print("\n=== MULTI-HORIZON CROSS-SECTIONAL IC (mean / frac>0 / days) ===")
+    print(f"{'target':16} " + " ".join(f"{('h=%d' % h):>18}" for h in HORIZONS))
+    mh = {}
+    for name, fn in main_targets:
+        cells = []
+        for h in HORIZONS:
+            fr_h = fr if h == a.horizon else forward_returns(snaps, dates, h)
+            s = summarize(per_date_ic(snaps, fr_h, fn))
+            mh.setdefault(name, {})[h] = s
+            cells.append(f"{s['mean_ic']:+.3f}/{s['frac_ic_pos']:.2f}/{s['days']:>3}"
+                         if s else "        n/a       ")
+        print(f"{name:16} " + " ".join(f"{c:>18}" for c in cells))
+    report["multi_horizon_ic"] = mh
+
+    print("\n=== QUANTILE / LONG-SHORT SPREAD (h=%d, per-date cross-section) ==="
+          % a.horizon)
+    print(f"{'target':16} {'top10%':>9} {'top20%':>9} {'bot20%':>9} "
+          f"{'spread':>9} {'t':>6} {'days+':>6}")
+    qrep = {}
+    for name, fn in main_targets:
+        q = quantile_spread(snaps, fr, fn)
+        qrep[name] = q
+        if not q:
+            continue
+        print(f"{name:16} {q['top10']:+9.4f} {q['top20']:+9.4f} "
+              f"{q['bot20']:+9.4f} {q['spread']:+9.4f} {q['spread_t']:>6} "
+              f"{q['frac_days_pos']:>6.3f}")
+    report["quantile_spread"] = qrep
+
+    print("\n=== PATH METRICS BY SCORE BUCKET (top vs bottom quintile) ===")
+    print("  h  target          bucket      n   medMFE   medMAE   MFE/|MAE|  "
+          "P(+5%<->-5%)  medDaysMFE  medDaysMAE")
+    prep = {}
+    for h in (7, 14):
+        fr_h = fr if h == a.horizon else forward_returns(snaps, dates, h)
+        paths = path_stats(snaps, h)
+        for name, fn in main_targets:
+            buckets = bucket_paths(snaps, fr_h, paths, fn)
+            for bname, st in buckets.items():
+                if not st or st["n"] < 30:
+                    continue
+                prep.setdefault(name, {})[f"h{h}_{bname}"] = st
+                rr = f"{st['rr']:.2f}" if st["rr"] is not None else "n/a"
+                upf = (f"{st['up_first_p']:.3f}"
+                       if st["up_first_p"] is not None else "n/a")
+                print(f"  {h:<2} {name:16} {bname:10} {st['n']:5} "
+                      f"{st['med_mfe']:+8.3f} {st['med_mae']:+8.3f} "
+                      f"{rr:>9} {upf:>12} "
+                      f"{st['med_tt_mfe']:>10} {st['med_tt_mae']:>11}")
+    report["path_metrics"] = prep
+
     if a.json:
         with open(a.json, "w") as f:
             json.dump(report, f, indent=2)
         print(f"\nwrote {a.json}")
+
+
+# ── Extension helpers (item 2 of the 2026-09-23 external review) ──
+HORIZONS = (1, 3, 7, 14, 30)
+
+
+def series_by_symbol(snaps):
+    """{symbol: [(date, price)] ascending} — each coin's own observable
+    sequence, so path metrics never borrow a price from another coin's grid."""
+    by_sym = defaultdict(list)
+    for (sym, d), s in snaps.items():
+        p = s.get("price")
+        if p and p > 0:
+            by_sym[sym].append((d, p))
+    for sym in by_sym:
+        by_sym[sym].sort()
+    return by_sym
+
+
+def path_stats(snaps, horizon, up=0.05, dn=-0.05):
+    """{(symbol,date): path metrics over the next `horizon` observations}.
+
+    mfe/mae      max favourable / adverse excursion vs entry price
+    tt_mfe/mae   observations until that extreme
+    up_first     True if +5% printed before -5%, False if the drawdown came
+                 first, None if neither level was touched in the window
+    """
+    out = {}
+    for sym, seq in series_by_symbol(snaps).items():
+        px = [p for _, p in seq]
+        for i in range(len(seq)):
+            if i + horizon >= len(px):
+                continue
+            p0 = px[i]
+            window = px[i + 1:i + 1 + horizon]
+            if not window:
+                continue
+            hi = max(window)
+            lo = min(window)
+            tt_up = next((j + 1 for j, x in enumerate(window)
+                          if x / p0 - 1 >= up), None)
+            tt_dn = next((j + 1 for j, x in enumerate(window)
+                          if x / p0 - 1 <= dn), None)
+            up_first = None if (tt_up is None and tt_dn is None) else (
+                tt_up is not None and (tt_dn is None or tt_up < tt_dn))
+            out[(sym, seq[i][0])] = {
+                "mfe": hi / p0 - 1, "mae": lo / p0 - 1,
+                "tt_mfe": window.index(hi) + 1, "tt_mae": window.index(lo) + 1,
+                "up_first": up_first,
+            }
+    return out
+
+
+def quantile_spread(snaps, fr, key, top_q=0.10, top2_q=0.20, bot_q=0.20,
+                    min_coins=8):
+    """Mean forward return of the top-decile / top-quintile / bottom-quintile
+    by score, per date, then averaged across dates (equal weight per day, so
+    a busy day cannot dominate). Also the top20-bottom20 spread and the
+    fraction of days it is positive."""
+    by_date = defaultdict(list)
+    for (sym, d), s in snaps.items():
+        if (sym, d) not in fr:
+            continue
+        v = key(s)
+        if v is None:
+            continue
+        by_date[d].append((v, fr[(sym, d)]))
+    tops, tops2, bots, spreads = [], [], [], []
+    for d, rows in by_date.items():
+        if len(rows) < min_coins:
+            continue
+        rows.sort(key=lambda r: -r[0])
+        n = len(rows)
+        k1 = max(1, int(round(n * top_q)))
+        k2 = max(1, int(round(n * top2_q)))
+        kb = max(1, int(round(n * bot_q)))
+        tops.append(statistics.mean([r[1] for r in rows[:k1]]))
+        t2 = statistics.mean([r[1] for r in rows[:k2]])
+        b2 = statistics.mean([r[1] for r in rows[-kb:]])
+        tops2.append(t2)
+        bots.append(b2)
+        spreads.append(t2 - b2)
+    if len(spreads) < 5:
+        return None
+    sd = statistics.pstdev(spreads) or 1e-12
+    return {
+        "top10": round(statistics.mean(tops), 4),
+        "top20": round(statistics.mean(tops2), 4),
+        "bot20": round(statistics.mean(bots), 4),
+        "spread": round(statistics.mean(spreads), 4),
+        "spread_t": round(statistics.mean(spreads) / (sd / len(spreads) ** 0.5), 2),
+        "frac_days_pos": round(sum(1 for x in spreads if x > 0) / len(spreads), 3),
+        "days": len(spreads),
+    }
+
+
+def bucket_paths(snaps, fr, paths, key, min_coins=8):
+    """Path metrics for the top-quintile vs bottom-quintile by score,
+    pooled across all (coin,date) rows in those buckets."""
+    by_date = defaultdict(list)
+    for (sym, d), s in snaps.items():
+        if (sym, d) not in fr or (sym, d) not in paths:
+            continue
+        v = key(s)
+        if v is None:
+            continue
+        by_date[d].append((v, (sym, d)))
+    top_rows, bot_rows = [], []
+    for d, rows in by_date.items():
+        if len(rows) < min_coins:
+            continue
+        rows.sort(key=lambda r: -r[0])
+        k = max(1, int(round(len(rows) * 0.20)))
+        top_rows += [k_ for _, k_ in rows[:k]]
+        bot_rows += [k_ for _, k_ in rows[-k:]]
+
+    def agg(keys_):
+        ps = [paths[k_] for k_ in keys_]
+        if len(ps) < 30:
+            return None
+        med = lambda xs: statistics.median(xs)
+        mfe = med([p["mfe"] for p in ps])
+        mae = med([p["mae"] for p in ps])
+        touched = [p["up_first"] for p in ps if p["up_first"] is not None]
+        return {
+            "n": len(ps),
+            "med_mfe": round(mfe, 4), "med_mae": round(mae, 4),
+            "rr": round(mfe / abs(mae), 2) if mae else None,
+            "up_first_p": (round(sum(1 for x in touched if x) / len(touched), 3)
+                           if touched else None),
+            "med_tt_mfe": med([p["tt_mfe"] for p in ps]),
+            "med_tt_mae": med([p["tt_mae"] for p in ps]),
+        }
+    return {"top20": agg(top_rows), "bot20": agg(bot_rows)}
 
 
 if __name__ == "__main__":
