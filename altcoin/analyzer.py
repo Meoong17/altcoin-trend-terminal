@@ -32,6 +32,28 @@ import time
 import requests
 
 
+def round_price(x, sig=8):
+    """Round a PRICE (or a price-difference: ATR, band edges, S/R levels) for
+    output WITHOUT collapsing micro-priced coins to zero.
+
+    round(x, 6) is fine for BTC but destroys sub-1e-6 quotes: BTTC trades at
+    ~3.8e-07, so round(3.8e-07, 6) == 0.0 — a non-positive close. That is
+    exactly the value the collector's "drop non-positive closes" guards are
+    supposed to make impossible, and it silently zeroes the sparkline, the
+    client-side 24h change (0/0 = NaN) and the correlation input for every
+    micro-priced coin. Prices are therefore rounded to 8 SIGNIFICANT digits
+    (fixed 6 decimals only once the value is large enough for 6 decimals to
+    be lossless display noise).
+    """
+    if x is None:
+        return None
+    if x == 0:
+        return 0.0
+    if abs(x) >= 1e-4:
+        return round(x, 6)
+    return float(f"{x:.{sig}g}")
+
+
 def _compute_rvm(closes):
     """Return/volatility/momentum from a list of closes (oldest first).
     Same implementation as market_data_fetcher.py's _compute_rvm — kept
@@ -129,7 +151,7 @@ def _compute_technical_analysis(closes, highs, lows, quote_volumes, rsi):
     # Moving averages + cross state
     mas = {p: _sma(closes, p) for p in (20, 50, 100)}
     for p, v in mas.items():
-        out[f"ma{p}"] = round(v, 6) if v is not None else None
+        out[f"ma{p}"] = round_price(v)
         out[f"price_vs_ma{p}"] = (round((px / v - 1) * 100, 2)
                                   if v else None)
     if mas[20] is not None and mas[50] is not None:
@@ -192,14 +214,14 @@ def _compute_technical_analysis(closes, highs, lows, quote_volumes, rsi):
             bstate = "lower band zone"
         else:
             bstate = "within bands (middle)"
-        out["bollinger"] = {"upper": round(upper, 6), "mid": round(band, 6),
-                            "lower": round(lower, 6), "pctB": round(pctB, 2),
+        out["bollinger"] = {"upper": round_price(upper), "mid": round_price(band),
+                            "lower": round_price(lower), "pctB": round(pctB, 2),
                             "state": bstate}
 
     # ATR / volatility
     atr = _atr(highs, lows, closes)
     if atr is not None:
-        out["atr"] = {"value": round(atr, 6),
+        out["atr"] = {"value": round_price(atr),
                       "pct": round(atr / px * 100, 2) if px else None}
 
     # RSI zone
@@ -212,8 +234,8 @@ def _compute_technical_analysis(closes, highs, lows, quote_volumes, rsi):
     n90 = min(90, len(closes))
     res30, sup30 = max(highs[-n30:]), min(lows[-n30:])
     res90, sup90 = max(highs[-n90:]), min(lows[-n90:])
-    out["support"] = {"30d": round(sup30, 6), "90d": round(sup90, 6)}
-    out["resistance"] = {"30d": round(res30, 6), "90d": round(res90, 6)}
+    out["support"] = {"30d": round_price(sup30), "90d": round_price(sup90)}
+    out["resistance"] = {"30d": round_price(res30), "90d": round_price(res90)}
     if res90 > sup90:
         out["range_pos_pct"] = round((px - sup90) / (res90 - sup90) * 100, 1)
 
@@ -653,7 +675,7 @@ def analyze_coin(symbol, btc_closes=None, klines=None, eth_closes=None):
         "rsi": rsi,
         # 30d series for frontend sparklines. Volumes are CLOSED candles only
         # (last in-progress candle dropped) so the last bar isn't a false dip.
-        "closes_30d": [round(c, 6) for c in closes[-30:]],
+        "closes_30d": [round_price(c) for c in closes[-30:]],
         "features": feats,
         "volumes_30d": [round(v, 0) for v in quote_volumes[:-1]][-30:],
         "flow": flow,
@@ -667,7 +689,7 @@ def analyze_coin(symbol, btc_closes=None, klines=None, eth_closes=None):
         ratios = [c / b for c, b in zip(closes[-n:], btc_closes[-n:]) if b]
         ratio_rvm = _compute_rvm(ratios)
         result["btc_ratio_trend"] = ratio_rvm["momentum"] if ratio_rvm else None
-        result["btc_ratio_latest"] = round(ratios[-1], 6) if ratios else None
+        result["btc_ratio_latest"] = round_price(ratios[-1]) if ratios else None
     else:
         result["btc_ratio_trend"] = None
         result["btc_ratio_latest"] = None

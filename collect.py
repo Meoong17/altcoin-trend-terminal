@@ -34,7 +34,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from altcoin.analyzer import (analyze_multiple_coins, discover_top_symbols, compute_alt_season,
                               rank_symbols_by_volume, fetch_klines)
 from altcoin.features import (score_components, classify_volume_flow,
-                              score_participation, score_flow_rotation)
+                              score_participation, score_flow_rotation,
+                              SCORE_VERSION)
 from altcoin.regime import classify_regime
 from altcoin.history import (append_cycle, stats as history_stats,
                              regime_streak, macro_series, get_model_version)
@@ -346,7 +347,7 @@ def compute_coin_trend_score(coin_result, glf_score, repo_stress_score):
         score, drivers, coverage = score_components(
             feats, rsi, participation=participation, flow_rotation=flow_rotation)
         if score is not None:
-            detail = {"status": "ok", "version": "v2-features",
+            detail = {"status": "ok", "version": SCORE_VERSION,
                      "drivers": drivers, "coverage": coverage,
                      "participation": participation, "flow_rotation": flow_rotation}
             # Comparability flag: a non-Binance source means volume-derived

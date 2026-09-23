@@ -205,7 +205,7 @@ def analyze_coins_fallback(symbols, compute_rvm, compute_rsi):
         # subtly-different "vs BTC" formula living under the same field
         # name. btc_ratio here is the coin's price denominated in BTC, so
         # coin_usd / btc_ratio recovers BTC's own USD price at that point.
-        from altcoin.analyzer import compute_performance
+        from altcoin.analyzer import compute_performance, round_price
         implied_btc = [u / r for u, r in zip(closes, btc_ratios) if r] \
             if btc_ratios and all(btc_ratios) else None
         implied_eth = [u / r for u, r in zip(closes, eth_ratios) if r] \
@@ -220,7 +220,7 @@ def analyze_coins_fallback(symbols, compute_rvm, compute_rsi):
             "data_source": "coinstats",
             "latest_price": closes[-1],
             "rsi": compute_rsi(closes),
-            "closes_30d": [round(c, 6) for c in closes],
+            "closes_30d": [round_price(c) for c in closes],
             # CoinStats charts carry no historical volume:
             "volumes_30d": None,
             "vol_24h_usd": round(vol24, 0) if vol24 else None,

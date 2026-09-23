@@ -172,7 +172,7 @@ def reconstruct_daily_rows(symbol, klines, btc_closes_by_ts, min_history=91):
     the same shape append_cycle() expects for a coin result, minus
     every macro/VaF/fundamental field (never fabricated for backfill).
     """
-    from altcoin.features import compute_feature_set, score_components
+    from altcoin.features import compute_feature_set, score_components, SCORE_VERSION
     from altcoin.analyzer import _compute_rsi
 
     closes = [k[3] for k in klines]
@@ -199,7 +199,7 @@ def reconstruct_daily_rows(symbol, klines, btc_closes_by_ts, min_history=91):
             "latest_price": c_slice[-1], "rsi": rsi,
             "trend_score": score,
             "trend_score_detail": {"status": "ok" if score is not None else "no_data",
-                                   "version": "v2-features-backfill",
+                                   "version": SCORE_VERSION + "-backfill",
                                    "drivers": drivers, "coverage": coverage},
             "features": feats,
             "closes_30d": c_slice[-30:],

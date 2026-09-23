@@ -26,6 +26,9 @@ trailing 90-day distribution — a single rank, which is what the
 composite score needs at inference time.
 """
 
+import hashlib
+import json
+
 
 def pct_rank(value, history):
     """Percentile rank (0-100) of value within history. None-safe."""
@@ -223,6 +226,18 @@ WEIGHTS = {
     "compression": 0.12,     # core — volatility-compression setup
     "confirmation": 0.08,    # filter — breakout + trend consistency
 }
+
+# Score-version tag, DERIVED from WEIGHTS instead of hardcoded. History rows
+# carry this in `trend_score_detail.version`, and it is the only way a later
+# validation can tell which formula produced a row. The old hardcoded
+# "v2-features" never changed when the 2026-08 restructure replaced macro 10%
+# with flow_rotation/participation 28%+28%, so ~38k stored rows were labeled
+# with a formula they were not computed under — the components themselves
+# (flow_rotation/participation/confirmation only exist from 2026-08-29) are
+# the only surviving evidence of the change. Any change to WEIGHTS now
+# changes the tag automatically.
+SCORE_VERSION = "v3-coresignal-" + hashlib.md5(
+    json.dumps(WEIGHTS, sort_keys=True).encode()).hexdigest()[:6]
 
 
 def _clip01(x):
