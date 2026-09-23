@@ -1036,7 +1036,7 @@ function cardBody(sym,c){
   const chg24=closes&&closes.length>2?(closes[closes.length-1]/closes[closes.length-2]-1):null;
   const vr=c.vol_ratio, tapeW=vr!=null?Math.min(100,vr/2*100):0;
   const rankNote=String(c.rank_note||'computed differently from the ranked set — shown for reference, not ranked');
-  const rankChip=(c.rankable===false)?` <span class="chip n" style="vertical-align:2px" data-tip="${rankNote.replace(/"/g,'&quot;').replace(/</g,'&lt;')}">NOT RANKABLE</span>`:'';
+  const rankChip=(c.rankable===false)?` <span class="chip" style="vertical-align:2px;border-color:var(--warn);color:var(--warn)" data-tip="${rankNote.replace(/"/g,'&quot;').replace(/</g,'&lt;')}">NOT RANKABLE</span>`:'';
   const srcBadge=c.data_source==='coinstats'?' <span class="chip n" style="vertical-align:2px">CS FALLBACK</span>'
     :c.data_source==='bybit'?' <span class="chip" style="vertical-align:2px;border-color:var(--warn);color:var(--warn)">BYBIT</span>'
     :c.data_source==='okx'?' <span class="chip" style="vertical-align:2px;border-color:var(--liq);color:var(--liq)">OKX</span>':'';
@@ -1305,7 +1305,7 @@ function render(d,force){
     <div class="stat"><span class="sk2">coins stretched (overbought)</span><span class="sv" style="color:${obCnt?'var(--warn)':'var(--text)'}">${obCnt}</span></div>
     <div class="stat"><span class="sk2">volume spikes ≥2×</span><span class="sv" style="color:${spikes?'var(--liq)':'var(--text)'}">${spikes}</span></div>
     <div class="stat"><span class="sk2">coins with catalysts</span><span class="sv" style="color:${catal?'var(--warn)':'var(--text)'}">${catal}</span></div>
-    <div class="stat"${rkQual?` data-tip="rankability qualities — ${rkQual}; NOT RANKABLE rows stay listed but sort last"`:''}><span class="sk2">rankable coins</span><span class="sv" style="color:${rk.not_rankable?'var(--warn)':'var(--text)'}">${rk.rankable??'—'}<small style="color:var(--dim);font-size:11px">/${rkTotal||'—'}</small></span></div>`;
+    <div class="stat"${rkQual?` data-tip="rankability qualities — ${rkQual}; NOT RANKABLE rows stay listed but sort last"`:''}><span class="sk2">coins rankable</span><span class="sv" style="color:${rk.not_rankable?'var(--warn)':'var(--text)'}">${rk.rankable??'—'}<small style="color:var(--dim);font-size:11px">/${rkTotal||'—'}</small></span></div>`;
 
   // ── render in the active view ──
   if(VIEW==='shortlist'){
@@ -1395,7 +1395,7 @@ function render(d,force){
                     c.data_source==='bybit'?`<span class="chip" style="color:var(--warn)">BB</span>`:'',
                     c.data_source==='okx'?`<span class="chip" style="color:var(--liq)">OKX</span>`:'',
                     c.data_source==='coinstats'?`<span class="chip n">CS</span>`:'',
-                    c.rankable===false?`<span class="chip n" data-tip="${String(c.rank_note||'not comparable to the ranked set').replace(/"/g,'&quot;')}">NOT RANKABLE</span>`:''].join('');
+                    c.rankable===false?`<span class="chip" style="border-color:var(--warn);color:var(--warn)" data-tip="${String(c.rank_note||'not comparable to the ranked set').replace(/"/g,'&quot;')}">NOT RANKABLE</span>`:''].join('');
       rows+=`<tr class="mrow" data-sym="${sym}">
         <td>${idx+1}</td>
         <td><span class="tsym">${sym.replace('USDT','')} ${c.groups?secBadge(c.groups[0]):''}</span></td>
