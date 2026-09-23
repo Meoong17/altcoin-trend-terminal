@@ -35,7 +35,8 @@ from altcoin.analyzer import (analyze_multiple_coins, discover_top_symbols, comp
                               rank_symbols_by_volume, fetch_klines)
 from altcoin.features import (score_components, classify_volume_flow,
                               score_participation, score_flow_rotation,
-                              SCORE_VERSION)
+                              SCORE_VERSION, assess_rankability,
+                              RANK_MIN_COVERAGE)
 from altcoin.regime import classify_regime
 from altcoin.history import (append_cycle, stats as history_stats,
                              regime_streak, macro_series, get_model_version)
@@ -531,6 +532,36 @@ def main():
             **({"groups": groups_map[symbol]} if symbol in groups_map else {}),
         }
 
+    # ── Rankability stamp ──────────────────────────────────────────────
+    # Second pass, because the source-quality rule depends on how the WHOLE
+    # universe was sourced this cycle. Rows that are not comparable (legacy
+    # formula, thin coverage, degraded source while Binance serves the rest)
+    # stay in the payload — the dashboard still shows them — but are marked
+    # not-rankable so no list presents them as contenders.
+    _src_counts = {}
+    for _row in coins_output.values():
+        _s = _row.get("data_source") or "binance"
+        _src_counts[_s] = _src_counts.get(_s, 0) + 1
+    _total_src = sum(_src_counts.values()) or 1
+    binance_share = _src_counts.get("binance", 0) / _total_src
+    rank_stats = {"rankable": 0, "not_rankable": 0, "data_quality": {},
+                  "binance_share": round(binance_share, 3),
+                  "min_coverage": RANK_MIN_COVERAGE,
+                  "score_version": SCORE_VERSION}
+    for _sym, _row in coins_output.items():
+        _ok, _quality, _note = assess_rankability(
+            _row.get("trend_score_detail"), _row.get("data_source"),
+            binance_share)
+        _row["rankable"] = _ok
+        _row["data_quality"] = _quality
+        if _note:
+            _row["rank_note"] = _note
+        rank_stats["rankable" if _ok else "not_rankable"] += 1
+        rank_stats["data_quality"][_quality] = \
+            rank_stats["data_quality"].get(_quality, 0) + 1
+    print(f"[Collect] Rankable: {rank_stats['rankable']}/{_total_src} "
+          f"(binance_share={binance_share:.2f}) qualities={rank_stats['data_quality']}")
+
     # ── Fundamental Intelligence layer (DeFi protocols only) ──
     # Loaded once, unconditionally: used by full VaF (DeFi/infra coins
     # below) AND by the standalone entry-timing pass (every coin) --
@@ -709,6 +740,7 @@ def main():
         "regime": regime,
         "market": market,
         "context_gate": context_gate,
+        "rankability": rank_stats,
         "macro": {
             "stablecoin_liquidity": stable_score,
             "stablecoin_detail": stable_detail,

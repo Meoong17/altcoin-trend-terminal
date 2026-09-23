@@ -239,6 +239,61 @@ WEIGHTS = {
 SCORE_VERSION = "v3-coresignal-" + hashlib.md5(
     json.dumps(WEIGHTS, sort_keys=True).encode()).hexdigest()[:6]
 
+# ── Rankability: is this number comparable to the others in the list? ──
+# The live universe used to mix rows produced by DIFFERENT formulas from data
+# of DIFFERENT completeness in one sorted list — e.g. GRASS at 86.1 (current
+# formula, coverage 0.72, priced via the OKX fallback, no flow_rotation) sat
+# next to MARSCOINUSDT at 81.81 (v1-legacy blend, zero v3 drivers, no
+# coverage at all) as if the two numbers meant the same thing. A ranking is
+# only meaningful between rows computed the same way from comparable data, so
+# rows that are not comparable stay VISIBLE but are stamped not-rankable and
+# sort below the rankable set instead of competing with them.
+RANK_MIN_COVERAGE = 0.70
+
+
+def assess_rankability(score_detail, data_source=None, binance_share=1.0,
+                       min_coverage=RANK_MIN_COVERAGE):
+    """-> (rankable: bool, data_quality: str, note: str|None).
+
+    data_quality is one of:
+      "current"          — current formula, enough coverage, primary source
+      "legacy-formula"   — produced by the legacy blend (version mismatch):
+                           different math, so not comparable to a v3 row
+      "low-coverage"     — score covers < min_coverage of its weight, i.e. the
+                           missing components were renormalized away
+      "degraded-source"  — priced by a fallback tier (OKX/Bybit/CoinStats),
+                           whose volume/taker-buy fields are degraded
+
+    "degraded-source" only makes a row UNRANKABLE while the primary source
+    dominates the universe (binance_share >= 0.5). If Binance itself is
+    unreachable for this host, EVERY coin sits on a fallback tier and holding
+    source quality against each of them would empty the ranking; the
+    degradation is then a property of the cycle's data mode, not of the coin,
+    and is surfaced once in the output meta instead.
+    """
+    detail = score_detail or {}
+    version = detail.get("version")
+    cov = (detail.get("coverage") or {}).get("weight_covered")
+    src = (data_source or "binance")
+
+    if version != SCORE_VERSION:
+        return False, "legacy-formula", (
+            f"computed by '{version or 'unknown'}' instead of the current "
+            f"'{SCORE_VERSION}' — different formula, not comparable")
+    if cov is None or cov < min_coverage:
+        return False, "low-coverage", (
+            f"only {cov if cov is not None else 0:.2f} of the score weight "
+            f"was available (min {min_coverage:.2f}) — too much was "
+            "renormalized away to rank")
+    if src != "binance" and binance_share >= 0.5:
+        return False, "degraded-source", (
+            f"priced via the {src} fallback — volume/flow inputs degraded")
+    if src != "binance":
+        return True, "degraded-source", (
+            f"priced via the {src} fallback, but the whole universe is on "
+            "fallback tiers this cycle (primary source unreachable)")
+    return True, "current", None
+
 
 def _clip01(x):
     return max(0.0, min(1.0, x))

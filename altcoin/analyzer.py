@@ -1334,6 +1334,35 @@ if __name__ == "__main__":
     assert _sc({}, None)[2] == {"used": 0, "total": 5, "weight_covered": 0.0}
     print("\u2705 PASS: score_components coverage \u2014 tells apart 5/5 vs partial component sets\n")
 
+    # Rankability guard (2026-09-23 external review, item 1): a score may only
+    # be RANKED against rows computed by the same formula from data of
+    # comparable completeness. Legacy/partial/fallback rows stay visible but
+    # must not compete — except when the whole universe is on fallback tiers,
+    # where source quality is a data-mode fact, not a per-coin defect.
+    from altcoin.features import assess_rankability, SCORE_VERSION, RANK_MIN_COVERAGE
+    ok, q, n = assess_rankability({"version": SCORE_VERSION,
+                                   "coverage": {"weight_covered": 1.0}}, "binance")
+    assert ok and q == "current" and n is None
+    assert assess_rankability({"version": SCORE_VERSION,
+                               "coverage": {"weight_covered": RANK_MIN_COVERAGE}},
+                              None)[0], "exactly at the threshold is acceptable"
+    ok, q, n = assess_rankability({"version": "v1-legacy", "coverage": None}, "binance")
+    assert not ok and q == "legacy-formula" and "not comparable" in n
+    ok, q, n = assess_rankability({"version": SCORE_VERSION,
+                                   "coverage": {"weight_covered": 0.4}}, "binance")
+    assert not ok and q == "low-coverage" and "renormalized" in n
+    ok, q, n = assess_rankability({"version": SCORE_VERSION,
+                                   "coverage": {"weight_covered": 0.72}}, "okx",
+                                  binance_share=0.9)
+    assert not ok and q == "degraded-source"
+    ok, q, n = assess_rankability({"version": SCORE_VERSION,
+                                   "coverage": {"weight_covered": 0.72}}, "okx",
+                                  binance_share=0.0)
+    assert ok and q == "degraded-source", \
+        "a fallback-only cycle must not empty the ranking"
+    print("\u2705 PASS: rankability \u2014 legacy / low-coverage / degraded-source flagged, "
+          "fallback-only cycle stays rankable\n")
+
     # Correlation / concentration warning (review fix #3: portfolio correlation)
     from altcoin.correlation import correlation_matrix, concentration_warning, pearson
     import random as _r5; _r5.seed(9)

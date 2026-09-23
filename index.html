@@ -580,7 +580,8 @@ details.techx[open] summary::before{content:'▾ ';color:var(--liq)}
     <p>Use the sort headers to rank by <b>Entry Timing</b> grade (A+ to Avoid) or <b>Fundamental / VaF</b>. A practical filter sequence:</p>
     <p>• <b>Entry Timing A+ or A</b> — the current setup is worth a look.<br>
     • <b>VaF ≥ 105 / F-Score</b> (protocol tokens) — strong measured value capture.<br>
-    • The <b>technical setup</b> readout is <b>DISPLAY ONLY — NOT validated</b> (momentum &amp; technicals failed the cross-era test), so use it as context, not a filter.</p>
+    • The <b>technical setup</b> readout is <b>DISPLAY ONLY — NOT validated</b> (momentum &amp; technicals failed the cross-era test), so use it as context, not a filter.<br>
+    • <b>NOT RANKABLE</b> rows (legacy formula, thin data coverage, or a fallback data source while Binance serves the rest of the universe) stay visible but sort <b>below</b> the ranked set: their number was not produced the same way as the others, so it is reference only — never a contender.</p>
     <p>Coins that pass the fundamentals + timing filters are worth deeper research. Avoid-grade entries are not actionable right now.</p>
 
     <h3>3. Understand the technical readout's building blocks</h3>
@@ -1034,9 +1035,12 @@ function cardBody(sym,c){
   const chg30=closes&&closes.length>1?(closes[closes.length-1]/closes[0]-1):null;
   const chg24=closes&&closes.length>2?(closes[closes.length-1]/closes[closes.length-2]-1):null;
   const vr=c.vol_ratio, tapeW=vr!=null?Math.min(100,vr/2*100):0;
+  const rankNote=String(c.rank_note||'computed differently from the ranked set — shown for reference, not ranked');
+  const rankChip=(c.rankable===false)?` <span class="chip n" style="vertical-align:2px" data-tip="${rankNote.replace(/"/g,'&quot;').replace(/</g,'&lt;')}">NOT RANKABLE</span>`:'';
   const srcBadge=c.data_source==='coinstats'?' <span class="chip n" style="vertical-align:2px">CS FALLBACK</span>'
     :c.data_source==='bybit'?' <span class="chip" style="vertical-align:2px;border-color:var(--warn);color:var(--warn)">BYBIT</span>'
     :c.data_source==='okx'?' <span class="chip" style="vertical-align:2px;border-color:var(--liq);color:var(--liq)">OKX</span>':'';
+  const srcBadgeAll=srcBadge+rankChip;
   const drivers=(c.trend_score_detail?.drivers||[]).slice(0,3);
   const vaf=c.vaf;
   const cov=c.trend_score_detail?.coverage;
@@ -1060,7 +1064,7 @@ function cardBody(sym,c){
     'For protocol tokens the VaF/F-Score chips are the measured-value view (still pending the ≥60-day test). '+
     'Missing inputs are excluded and the remaining weights renormalized, never filled with zero.';
   return `      <div class="head">
-        <span class="sym">${sym.replace('USDT','')}<small>/USDT</small>${c.groups?secBadge(c.groups[0]):''}${srcBadge}${infoIcon(cardTip)}</span>
+        <span class="sym">${sym.replace('USDT','')}<small>/USDT</small>${c.groups?secBadge(c.groups[0]):''}${srcBadgeAll}${infoIcon(cardTip)}</span>
         <span class="px"><b>${fmtPx(c.latest_price)}</b>
           <span class="${cls(chg24,0,0)}">${chg24!=null?pct(chg24)+' 24h':''}</span></span>
       </div>
@@ -1277,6 +1281,11 @@ function render(d,force){
   if(gq)entries=entries.filter(([,c])=>(c.groups||[]).includes(gq));
   if(q)entries=entries.filter(([s])=>s.includes(q));
   entries.sort((a,b)=>{
+    // NOT RANKABLE rows (legacy formula, thin coverage, degraded source)
+    // always sort below the rankable set: they stay visible, but no list
+    // presents them as contenders against comparable scores.
+    const ar=a[1].rankable!==false, br=b[1].rankable!==false;
+    if(ar!==br)return ar?-1:1;
     const av=a[1].status==='ok'?getv(a[1]):null, bv=b[1].status==='ok'?getv(b[1]):null;
     if(av==null&&bv==null)return 0; if(av==null)return 1; if(bv==null)return -1;
     return bv-av;
@@ -1288,11 +1297,15 @@ function render(d,force){
   const obCnt=okRows.filter(c=>c.ta?.rsi_zone==='overbought').length;
   const spikes=okRows.filter(c=>c.vol_ratio!=null&&c.vol_ratio>=2).length;
   const catal=okRows.filter(c=>c.news&&((c.news.catalysts_pos||[]).length||(c.news.catalysts_neg||[]).length)).length;
+  const rk=d.rankability||{};
+  const rkTotal=(rk.rankable??0)+(rk.not_rankable??0);
+  const rkQual=Object.entries(rk.data_quality||{}).map(([k,v])=>k+': '+v).join(' · ');
   $('stats').innerHTML=`
     <div class="stat"><span class="sk2">coins in uptrend</span><span class="sv" style="color:${upCnt?'var(--up)':'var(--text)'}">${upCnt}<small style="color:var(--dim);font-size:11px">/${okRows.length}</small></span></div>
     <div class="stat"><span class="sk2">coins stretched (overbought)</span><span class="sv" style="color:${obCnt?'var(--warn)':'var(--text)'}">${obCnt}</span></div>
     <div class="stat"><span class="sk2">volume spikes ≥2×</span><span class="sv" style="color:${spikes?'var(--liq)':'var(--text)'}">${spikes}</span></div>
-    <div class="stat"><span class="sk2">coins with catalysts</span><span class="sv" style="color:${catal?'var(--warn)':'var(--text)'}">${catal}</span></div>`;
+    <div class="stat"><span class="sk2">coins with catalysts</span><span class="sv" style="color:${catal?'var(--warn)':'var(--text)'}">${catal}</span></div>
+    <div class="stat"${rkQual?` data-tip="rankability qualities — ${rkQual}; NOT RANKABLE rows stay listed but sort last"`:''}><span class="sk2">rankable coins</span><span class="sv" style="color:${rk.not_rankable?'var(--warn)':'var(--text)'}">${rk.rankable??'—'}<small style="color:var(--dim);font-size:11px">/${rkTotal||'—'}</small></span></div>`;
 
   // ── render in the active view ──
   if(VIEW==='shortlist'){
@@ -1302,7 +1315,7 @@ function render(d,force){
     // provenanced driver (real analyst input), not just auto/proxy metrics.
     const isResearched=c=>!!(c.vaf?.pillars && Object.values(c.vaf.pillars)
       .some(p=>(p.drivers||[]).some(d=>d.provenance==='manual')));
-    const short=entries.filter(([,c])=>['A+','A'].includes(c.entry_timing?.grade))
+    const short=entries.filter(([,c])=>['A+','A'].includes(c.entry_timing?.grade)&&c.rankable!==false)
       .sort((a,b)=>{
         const ra=isResearched(a[1])?1:0, rb=isResearched(b[1])?1:0;
         if(ra!==rb)return rb-ra;   // researched coins first
@@ -1381,7 +1394,8 @@ function render(d,force){
                     c.fundamental_score!=null&&!c.vaf?`<span class="chip">F ${c.fundamental_score}</span>`:'',
                     c.data_source==='bybit'?`<span class="chip" style="color:var(--warn)">BB</span>`:'',
                     c.data_source==='okx'?`<span class="chip" style="color:var(--liq)">OKX</span>`:'',
-                    c.data_source==='coinstats'?`<span class="chip n">CS</span>`:''].join('');
+                    c.data_source==='coinstats'?`<span class="chip n">CS</span>`:'',
+                    c.rankable===false?`<span class="chip n" data-tip="${String(c.rank_note||'not comparable to the ranked set').replace(/"/g,'&quot;')}">NOT RANKABLE</span>`:''].join('');
       rows+=`<tr class="mrow" data-sym="${sym}">
         <td>${idx+1}</td>
         <td><span class="tsym">${sym.replace('USDT','')} ${c.groups?secBadge(c.groups[0]):''}</span></td>
