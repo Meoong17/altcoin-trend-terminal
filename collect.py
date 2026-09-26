@@ -98,7 +98,18 @@ SYMBOL_GROUPS = {
     "depin": ["FILUSDT", "ARUSDT", "HNTUSDT", "IOTXUSDT", "THETAUSDT"],
     "rwa": ["ONDOUSDT", "POLYXUSDT", "OMUSDT"],
     "privacy": ["ZECUSDT", "DASHUSDT", "ZENUSDT"],
-    "restaking": ["EIGENUSDT", "ETHFIUSDT"],
+    # ── Liquid staking + restaking ── (one economic activity: capital
+    # staked / re-staked for security, so both live in ONE sector).
+    # Extended 2026-09-26 with the Binance-listed members of CoinGecko's
+    # "restaking" / liquid-staking categories, each probed against the live
+    # Binance spot universe before being added. Wrapped receipts
+    # (WBETH/BNSOL/BETH) are deliberately EXCLUDED: they mirror their
+    # underlying and carry no independent trend of their own.
+    "restaking": [
+        "EIGENUSDT", "ETHFIUSDT", "JTOUSDT", "ANKRUSDT", "SSVUSDT",
+        "RPLUSDT", "REZUSDT", "ALTUSDT", "LAYERUSDT", "KERNELUSDT",
+        "BBUSDT",
+    ],
     # ── Added 2026-08-30 (source: CoinGecko category ∩ OKX spot universe) ──
     # Curated from CoinGecko categories (ai, depin, storage, lending-borrowing)
     # intersected with OKX spot tradable symbols; each coin belongs to exactly
